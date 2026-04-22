@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KeyGuru Roadmap</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a18;font-size:13px}
+.app{padding:20px;min-width:900px}
+h1{font-size:16px;font-weight:500;margin-bottom:16px;color:#3d3d3a}
+.toolbar{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
+button{font-size:12px;padding:5px 12px;border:0.5px solid #b0afa8;border-radius:6px;background:#fff;cursor:pointer;color:#3d3d3a}
+button:hover{background:#f0efea}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.primary{background:#185FA5;color:#fff;border-color:#185FA5}
+button.primary:hover{background:#0C447C}
+button.danger{background:#fff;color:#A32D2D;border-color:#A32D2D}
+button.danger:hover{background:#FCEBEB}
+.status{font-size:11px;color:#888;margin-left:4px;min-width:160px}
+.status.saving{color:#BA7517}
+.status.ok{color:#3B6D11}
+.status.err{color:#A32D2D}
+.sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.sync-dot.ok{background:#3B6D11}
+.sync-dot.saving{background:#BA7517}
+.sync-dot.err{background:#A32D2D}
+.gantt-wrap{overflow-x:auto;border:0.5px solid #d3d1c7;border-radius:10px;background:#fff}
+.gantt{min-width:max-content}
+.col-left{width:160px;flex:none}
+.header-row{display:flex;border-bottom:1px solid #e8e7e2;position:sticky;top:0;background:#f8f7f3;z-index:20}
+.header-left{width:160px;flex:none;padding:8px 10px;font-size:10px;font-weight:500;color:#888;border-right:1px solid #e8e7e2}
+.header-weeks{display:flex;flex:1;position:relative}
+.week-hdr{flex:none;width:56px;text-align:center;padding:4px 0;border-right:0.5px solid #e8e7e2;font-size:9px;color:#aaa;line-height:1.4}
+.week-hdr.month-start{border-left:2px solid #d3d1c7}
+.week-num{font-weight:500;color:#666;font-size:10px}
+.section-hdr{display:flex;align-items:center;background:#f0efea;border-bottom:0.5px solid #e0dfd9;border-top:0.5px solid #e0dfd9;padding:6px 10px;font-size:11px;font-weight:500;color:#5f5e5a;position:sticky;left:0;z-index:10}
+.section-hdr .avatar{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:600;margin-right:8px;flex:none}
+.row{display:flex;align-items:center;border-bottom:0.5px solid #eeecea;min-height:38px}
+.row-left{width:160px;flex:none;border-right:1px solid #e8e7e2;padding:0 10px;display:flex;align-items:center;min-height:38px;background:#fff;position:sticky;left:0;z-index:5;gap:4px}
+.row-label{font-size:11px;color:#73726c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:text;flex:1;min-width:0}
+.row-label:focus{outline:none;color:#1a1a18}
+.row-del{flex:none;width:14px;height:14px;border-radius:3px;background:none;border:none;color:#ccc;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;line-height:1}
+.row-del:hover{color:#A32D2D;background:#FCEBEB}
+.timeline{flex:1;position:relative;min-height:38px;display:flex;align-items:center}
+.week-bg{display:flex;position:absolute;top:0;left:0;right:0;bottom:0;pointer-events:none}
+.week-bg-cell{flex:none;width:56px;height:100%;border-right:0.5px solid #f0efea}
+.week-bg-cell.month-start{border-left:2px solid #e8e7e2}
+.week-bg-cell.today-cell{background:rgba(226,75,74,0.04)}
+.bar{position:absolute;height:26px;border-radius:5px;cursor:grab;display:flex;align-items:center;padding:0 8px 0 6px;font-size:10px;font-weight:500;white-space:nowrap;overflow:hidden;user-select:none;z-index:3;transition:box-shadow .1s}
+.bar:active{cursor:grabbing;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:100}
+.bar.done{background:#DAEAF7;border:1px solid #185FA5;color:#0C447C}
+.bar.wip{background:#FEF3C7;border:1px solid #BA7517;color:#633806}
+.bar.idea{background:#EAF3DE;border:1px solid #3B6D11;color:#27500A}
+.bar-label{pointer-events:none;overflow:hidden;text-overflow:ellipsis;flex:1}
+.resize-r{position:absolute;right:0;top:0;width:7px;height:100%;cursor:col-resize;z-index:4;border-radius:0 5px 5px 0}
+.resize-r:hover{background:rgba(0,0,0,0.12)}
+.today-line{position:absolute;top:0;bottom:0;width:2px;background:#E24B4A;opacity:.5;z-index:6;pointer-events:none}
+.today-label{position:absolute;top:2px;font-size:8px;color:#E24B4A;white-space:nowrap;pointer-events:none;z-index:7}
+#ghost{position:fixed;pointer-events:none;z-index:9999;opacity:.75;border-radius:5px;display:none;align-items:center;padding:0 8px;font-size:10px;font-weight:500;height:26px;white-space:nowrap}
+.drop-line{position:absolute;left:0;right:0;height:3px;background:#378ADD;border-radius:2px;z-index:50;pointer-events:none}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:1000;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:10px;padding:20px;min-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.15)}
+.modal h3{font-size:14px;font-weight:500;margin-bottom:14px}
+.modal label{font-size:11px;color:#666;display:block;margin-bottom:4px}
+.modal input,.modal select{width:100%;padding:6px 10px;border:0.5px solid #ccc;border-radius:6px;font-size:12px;margin-bottom:12px;background:#fff;color:#1a1a18}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.modal-btns-left{display:flex;gap:8px;justify-content:flex-start;margin-top:4px}
+.modal-row{display:flex;justify-content:space-between;align-items:center}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>KeyGuru — Roadmap 2026</h1>
+<div class="toolbar">
+  <button onclick="addWeeks(4)">+ 4 týdny</button>
+  <button onclick="addWeeks(-4)">- 4 týdny</button>
+  <button onclick="addRow()">+ Řádek</button>
+  <button onclick="openAddBar()">+ Položka</button>
+  <button class="primary" id="btn-save" onclick="saveData()">Uložit</button>
+  <span class="status" id="status"><span class="sync-dot ok" id="sync-dot"></span>Načítám...</span>
+</div>
+<div class="gantt-wrap">
+  <div class="gantt" id="gantt"></div>
+</div>
+</div>
+
+<div id="ghost"></div>
+
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Nová položka</h3>
+    <label>Název</label>
+    <input type="text" id="m-label" placeholder="Název položky">
+    <label>Řádek</label>
+    <select id="m-row"></select>
+    <label>Začátek (týden od 20.4.2026)</label>
+    <input type="number" id="m-start" value="0" min="0">
+    <label>Délka (týdny)</label>
+    <input type="number" id="m-dur" value="4" min="1">
+    <label>Typ</label>
+    <select id="m-type">
+      <option value="wip">Připravujeme (žlutá)</option>
+      <option value="done">Hotové (modrá)</option>
+      <option value="idea">Uvažujeme (zelená)</option>
+    </select>
+    <div class="modal-row">
+      <div class="modal-btns-left" id="modal-del-wrap"></div>
+      <div class="modal-btns">
+        <button onclick="closeModal()">Zrušit</button>
+        <button class="primary" onclick="confirmModal()">Uložit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_KEY = '$2a$10$G91DHYmm/b1VUe2NtdXMFuPnV03HLpfX152bs6ADCN2kinQMxqLUC';
+const BIN_NAME = 'keyguru-roadmap';
+const LS_BIN_ID = 'kgr-bin-id';
+const WEEK_W = 56;
+const START = new Date('2026-04-20');
+
+const COLORS = {
+  jan:   {bg:'#DAEAF7',border:'#185FA5',text:'#0C447C',initials:'JP'},
+  martin:{bg:'#EAF3DE',border:'#3B6D11',text:'#27500A',initials:'MT'},
+  tomas: {bg:'#FAEEDA',border:'#854F0B',text:'#633806',initials:'TH'},
+};
+
+const DEFAULT = {
+  totalWeeks:24,
+  sections:[
+    {id:'jan',name:'Jan Procházka',color:'jan',rows:[
+      {id:'jan-r1',label:'BX/GK3',bars:[{id:'b1',start:0,dur:4,type:'wip',label:'BX/GK3'}]},
+      {id:'jan-r2',label:'RPi+board+app',bars:[{id:'b2',start:0,dur:4,type:'wip',label:'RPi+board+app'}]},
+      {id:'jan-r3',label:'Gateway',bars:[{id:'b3',start:4,dur:4,type:'wip',label:'Gateway'}]},
+    ]},
+    {id:'martin',name:'Martin Tauer',color:'martin',rows:[
+      {id:'mar-r1',label:'K2H úpravy',bars:[{id:'b4',start:0,dur:4,type:'done',label:'K2H úpravy'}]},
+      {id:'mar-r2',label:'Autoservisy',bars:[{id:'b5',start:4,dur:4,type:'wip',label:'Autoservisy'}]},
+      {id:'mar-r3',label:'BX/GK3 app',bars:[{id:'b6',start:4,dur:4,type:'wip',label:'BX/GK3 app'}]},
+      {id:'mar-r4',label:'DeviceMgmt KGR',bars:[{id:'b7',start:4,dur:4,type:'wip',label:'DeviceMgmt KGR'}]},
+      {id:'mar-r5',label:'Core/Orchestration',bars:[{id:'b8',start:4,dur:4,type:'wip',label:'Core/Orchestration'}]},
+      {id:'mar-r6',label:'API',bars:[{id:'b9',start:8,dur:4,type:'wip',label:'API'}]},
+    ]},
+    {id:'tomas',name:'Tomáš Haubert',color:'tomas',rows:[
+      {id:'tom-r1',label:'StaySync',bars:[{id:'b10',start:0,dur:4,type:'wip',label:'StaySync'}]},
+      {id:'tom-r2',label:'DeviceMgmt Falken',bars:[{id:'b11',start:4,dur:4,type:'wip',label:'DeviceMgmt Falken'}]},
+      {id:'tom-r3',label:'User Mgmt',bars:[{id:'b12',start:8,dur:4,type:'wip',label:'User Mgmt'}]},
+      {id:'tom-r4',label:'Operator FE',bars:[{id:'b13',start:8,dur:4,type:'wip',label:'Operator FE'}]},
+      {id:'tom-r5',label:'DriveSync',bars:[{id:'b14',start:8,dur:4,type:'wip',label:'DriveSync'}]},
+    ]},
+  ]
+};
+
+let data = null;
+let binId = localStorage.getItem(LS_BIN_ID) || null;
+let editingBar = null;
+let nextId = 200;
+let saveTimer = null;
+
+function setStatus(msg, cls){
+  const el = document.getElementById('status');
+  const dot = document.getElementById('sync-dot');
+  el.innerHTML = `<span class="sync-dot ${cls}" id="sync-dot"></span>${msg}`;
+  el.className = 'status ' + cls;
+}
+
+async function loadData(){
+  setStatus('Načítám...','saving');
+  try{
+    if(binId){
+      const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`,{
+        headers:{'X-Master-Key':API_KEY}
+      });
+      if(r.ok){
+        const j = await r.json();
+        data = j.record;
+        setStatus('Synchronizováno','ok');
+        render();
+        return;
+      }
+    }
+    await createBin();
+  }catch(e){
+    fallbackLoad();
+  }
+}
+
+async function createBin(){
+  setStatus('Inicializuji...','saving');
+  try{
+    const r = await fetch('https://api.jsonbin.io/v3/b',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Master-Key':API_KEY,'X-Bin-Name':BIN_NAME,'X-Bin-Private':'false'},
+      body:JSON.stringify(DEFAULT)
+    });
+    if(r.ok){
+      const j = await r.json();
+      binId = j.metadata.id;
+      localStorage.setItem(LS_BIN_ID, binId);
+      data = DEFAULT;
+      setStatus('Synchronizováno','ok');
+      render();
+    } else {
+      fallbackLoad();
+    }
+  }catch(e){
+    fallbackLoad();
+  }
+}
+
+function fallbackLoad(){
+  const ls = localStorage.getItem('kgr-roadmap-local');
+  data = ls ? JSON.parse(ls) : JSON.parse(JSON.stringify(DEFAULT));
+  setStatus('Offline — ukládám lokálně','err');
+  render();
+}
+
+async function saveData(){
+  if(!data) return;
+  localStorage.setItem('kgr-roadmap-local', JSON.stringify(data));
+  setStatus('Ukládám...','saving');
+  try{
+    if(!binId){ await createBin(); return; }
+    const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json','X-Master-Key':API_KEY},
+      body:JSON.stringify(data)
+    });
+    if(r.ok){
+      const now = new Date().toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});
+      setStatus(`Uloženo ${now}`,'ok');
+    } else {
+      setStatus('Chyba uložení — data jsou lokálně','err');
+    }
+  }catch(e){
+    setStatus('Offline — uloženo lokálně','err');
+  }
+}
+
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveData, 1500);
+}
+
+function weekLabel(i){
+  const d = new Date(START);
+  d.setDate(d.getDate()+i*7);
+  return d.getDate()+'.'+(d.getMonth()+1)+'.';
+}
+
+function isMonthStart(i){
+  if(i===0) return false;
+  const d = new Date(START); d.setDate(d.getDate()+i*7);
+  const p = new Date(START); p.setDate(p.getDate()+(i-1)*7);
+  return d.getMonth()!==p.getMonth();
+}
+
+function todayWeek(){
+  return (new Date()-START)/(7*24*3600*1000);
+}
+
+function addWeeks(n){
+  data.totalWeeks=Math.max(8,data.totalWeeks+n);
+  render(); scheduleSave();
+}
+
+function addRow(){
+  const secId=prompt('Přidat řádek do sekce (jan / martin / tomas):','jan');
+  if(!secId) return;
+  const sec=data.sections.find(s=>s.id===secId);
+  if(!sec){alert('Sekce nenalezena');return;}
+  const label=prompt('Název řádku:','Nový řádek');
+  if(!label) return;
+  sec.rows.push({id:'r'+Date.now(),label,bars:[]});
+  render(); scheduleSave();
+}
+
+function deleteRow(rowId){
+  for(const sec of data.sections){
+    const idx=sec.rows.findIndex(r=>r.id===rowId);
+    if(idx!==-1){
+      if(!confirm(`Smazat řádek "${sec.rows[idx].label}"?`)) return;
+      sec.rows.splice(idx,1);
+      render(); scheduleSave(); return;
+    }
+  }
+}
+
+function openAddBar(){
+  editingBar=null;
+  document.getElementById('modal-title').textContent='Nová položka';
+  document.getElementById('m-label').value='';
+  document.getElementById('m-start').value=0;
+  document.getElementById('m-dur').value=4;
+  document.getElementById('m-type').value='wip';
+  document.getElementById('modal-del-wrap').innerHTML='';
+  fillRowSelect();
+  document.getElementById('modal').classList.add('open');
+  setTimeout(()=>document.getElementById('m-label').focus(),50);
+}
+
+function fillRowSelect(selectedRowId){
+  const sel=document.getElementById('m-row');
+  sel.innerHTML='';
+  for(const sec of data.sections){
+    for(const row of sec.rows){
+      const opt=document.createElement('option');
+      opt.value=row.id;
+      opt.textContent=sec.name.split(' ')[0]+' — '+row.label;
+      if(row.id===selectedRowId) opt.selected=true;
+      sel.appendChild(opt);
+    }
+  }
+}
+
+function closeModal(){
+  document.getElementById('modal').classList.remove('open');
+  editingBar=null;
+}
+
+function confirmModal(){
+  const label=document.getElementById('m-label').value.trim();
+  if(!label){alert('Zadej název');return;}
+  const rowId=document.getElementById('m-row').value;
+  const start=parseInt(document.getElementById('m-start').value)||0;
+  const dur=parseInt(document.getElementById('m-dur').value)||4;
+  const type=document.getElementById('m-type').value;
+  if(editingBar){
+    editingBar.bar.label=label;
+    editingBar.bar.start=start;
+    editingBar.bar.dur=dur;
+    editingBar.bar.type=type;
+    if(editingBar.rowId!==rowId){
+      const oldRow=findRow(editingBar.rowId);
+      const newRow=findRow(rowId);
+      if(oldRow&&newRow){
+        oldRow.bars=oldRow.bars.filter(b=>b.id!==editingBar.bar.id);
+        newRow.bars.push(editingBar.bar);
+      }
+    }
+  } else {
+    const row=findRow(rowId);
+    if(row) row.bars.push({id:'b'+(nextId++),start,dur,type,label});
+  }
+  closeModal(); render(); scheduleSave();
+}
+
+function deleteBar(barId){
+  for(const sec of data.sections){
+    for(const row of sec.rows){
+      const idx=row.bars.findIndex(b=>b.id===barId);
+      if(idx!==-1){row.bars.splice(idx,1); closeModal(); render(); scheduleSave(); return;}
+    }
+  }
+}
+
+function findRow(rowId){
+  for(const sec of data.sections){
+    const r=sec.rows.find(r=>r.id===rowId);
+    if(r) return r;
+  }
+  return null;
+}
+
+function findBar(barId){
+  for(const sec of data.sections){
+    for(const row of sec.rows){
+      const b=row.bars.find(b=>b.id===barId);
+      if(b) return {bar:b,row,sec};
+    }
+  }
+  return null;
+}
+
+function pushFollowing(row,barId,delta){
+  if(delta===0) return;
+  const bar=row.bars.find(b=>b.id===barId);
+  if(!bar) return;
+  const end=bar.start+bar.dur;
+  for(const b of row.bars){
+    if(b.id===barId) continue;
+    if(b.start>=end-(delta>0?delta:0)) b.start=Math.max(0,b.start+delta);
+  }
+}
+
+function render(){
+  if(!data) return;
+  const W=data.totalWeeks;
+  const todayW=todayWeek();
+  const g=document.getElementById('gantt');
+  let html='';
+
+  html+='<div class="header-row">';
+  html+='<div class="header-left">Kdo / co</div>';
+  html+=`<div class="header-weeks" style="position:relative;width:${W*WEEK_W}px">`;
+  for(let i=0;i<W;i++){
+    const ms=i>0&&isMonthStart(i)?' month-start':'';
+    html+=`<div class="week-hdr${ms}"><div class="week-num">T${i+1}</div>${weekLabel(i)}</div>`;
+  }
+  const todayPx=todayW*WEEK_W;
+  html+=`<div class="today-line" style="left:${todayPx}px"></div>`;
+  html+=`<div class="today-label" style="left:${todayPx+4}px">dnes</div>`;
+  html+='</div></div>';
+
+  for(const sec of data.sections){
+    const c=COLORS[sec.color]||COLORS.jan;
+    html+=`<div class="section-hdr">
+      <span class="avatar" style="background:${c.bg};color:${c.text};border:1px solid ${c.border}">${c.initials}</span>
+      ${sec.name}
+    </div>`;
+    for(const row of sec.rows){
+      html+=`<div class="row" data-row="${row.id}">`;
+      html+=`<div class="row-left">
+        <div class="row-label" contenteditable="true" data-row-label="${row.id}" spellcheck="false">${row.label}</div>
+        <button class="row-del" onclick="deleteRow('${row.id}')" title="Smazat řádek">×</button>
+      </div>`;
+      html+=`<div class="timeline" data-row="${row.id}" style="width:${W*WEEK_W}px">`;
+      html+='<div class="week-bg">';
+      for(let i=0;i<W;i++){
+        const ms=i>0&&isMonthStart(i)?' month-start':'';
+        const td=(i<=todayW&&todayW<i+1)?' today-cell':'';
+        html+=`<div class="week-bg-cell${ms}${td}"></div>`;
+      }
+      html+='</div>';
+      for(const bar of row.bars){
+        const left=bar.start*WEEK_W;
+        const width=bar.dur*WEEK_W;
+        html+=`<div class="bar ${bar.type}" data-bar="${bar.id}" style="left:${left}px;width:${width}px" title="${bar.label} (T${bar.start+1}–T${bar.start+bar.dur})">
+          <span class="bar-label">${bar.label}</span>
+          <div class="resize-r" data-resize="${bar.id}"></div>
+        </div>`;
+      }
+      html+='</div></div>';
+    }
+  }
+  g.innerHTML=html;
+  attachEvents();
+}
+
+function attachEvents(){
+  document.querySelectorAll('[data-row-label]').forEach(el=>{
+    el.addEventListener('blur',()=>{
+      const row=findRow(el.dataset.rowLabel);
+      if(row){row.label=el.textContent.trim(); scheduleSave();}
+    });
+    el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();el.blur();}});
+  });
+  document.querySelectorAll('.bar').forEach(el=>{
+    el.addEventListener('mousedown',onBarMouseDown);
+    el.addEventListener('dblclick',onBarDblClick);
+  });
+  document.querySelectorAll('.resize-r').forEach(el=>{
+    el.addEventListener('mousedown',onResizeDown);
+  });
+}
+
+function onBarDblClick(e){
+  e.stopPropagation();
+  const barId=e.currentTarget.dataset.bar;
+  const found=findBar(barId);
+  if(!found) return;
+  editingBar={bar:found.bar,rowId:found.row.id};
+  document.getElementById('modal-title').textContent='Upravit položku';
+  document.getElementById('m-label').value=found.bar.label;
+  document.getElementById('m-start').value=found.bar.start;
+  document.getElementById('m-dur').value=found.bar.dur;
+  document.getElementById('m-type').value=found.bar.type;
+  fillRowSelect(found.row.id);
+  document.getElementById('modal-del-wrap').innerHTML=
+    `<button class="danger" onclick="deleteBar('${barId}')">Smazat položku</button>`;
+  document.getElementById('modal').classList.add('open');
+}
+
+function onBarMouseDown(e){
+  if(e.target.classList.contains('resize-r')) return;
+  if(e.target.isContentEditable) return;
+  e.preventDefault();
+  const barId=e.currentTarget.dataset.bar;
+  const found=findBar(barId);
+  if(!found) return;
+  const {bar,row}=found;
+  const startX=e.clientX;
+  const origStart=bar.start;
+  let moved=false;
+  let crossRow=false;
+  const ghost=document.getElementById('ghost');
+  const barEl=e.currentTarget;
+  const barType=bar.type;
+
+  function onMove(e){
+    const dx=e.clientX-startX;
+    const dy=e.clientY-startY;
+    if(!moved&&Math.abs(dx)+Math.abs(dy)>4) moved=true;
+    if(!moved) return;
+    const dw=Math.round(dx/WEEK_W);
+    const targetEl=document.elementFromPoint(e.clientX,e.clientY);
+    const targetRowEl=targetEl&&targetEl.closest('[data-row]');
+    const targetRowId=targetRowEl&&targetRowEl.dataset.row;
+    const targetRow=targetRowId?findRow(targetRowId):null;
+
+    if(targetRow&&targetRow.id!==row.id){
+      crossRow=true;
+      ghost.style.cssText=`display:flex;left:${e.clientX-60}px;top:${e.clientY-13}px;width:${bar.dur*WEEK_W}px;background:${barType==='done'?'#DAEAF7':barType==='idea'?'#EAF3DE':'#FEF3C7'};border:1px solid ${barType==='done'?'#185FA5':barType==='idea'?'#3B6D11':'#BA7517'};color:${barType==='done'?'#0C447C':barType==='idea'?'#27500A':'#633806'}`;
+      ghost.textContent=bar.label;
+      barEl.style.opacity='0.3';
+      document.querySelectorAll('.drop-line').forEach(l=>l.remove());
+      const tl=targetRowEl&&targetRowEl.querySelector('.timeline');
+      if(tl){const line=document.createElement('div');line.className='drop-line';line.style.top='0';tl.appendChild(line);}
+    } else {
+      crossRow=false;
+      ghost.style.display='none';
+      barEl.style.opacity='1';
+      document.querySelectorAll('.drop-line').forEach(l=>l.remove());
+      const newStart=Math.max(0,origStart+dw);
+      if(newStart!==bar.start){
+        const delta=newStart-bar.start;
+        bar.start=newStart;
+        pushFollowing(row,barId,delta);
+        render();
+      }
+    }
+  }
+
+  const startY=e.clientY;
+
+  function onUp(e){
+    window.removeEventListener('mousemove',onMove);
+    window.removeEventListener('mouseup',onUp);
+    ghost.style.display='none';
+    document.querySelectorAll('.drop-line').forEach(l=>l.remove());
+    barEl.style.opacity='1';
+    if(crossRow){
+      const targetEl=document.elementFromPoint(e.clientX,e.clientY);
+      const targetRowEl=targetEl&&targetEl.closest('[data-row]');
+      const targetRowId=targetRowEl&&targetRowEl.dataset.row;
+      const targetRow=targetRowId?findRow(targetRowId):null;
+      if(targetRow&&targetRow.id!==row.id){
+        const tl=targetRowEl&&targetRowEl.querySelector('.timeline');
+        if(tl){
+          const rect=tl.getBoundingClientRect();
+          bar.start=Math.max(0,Math.round((e.clientX-rect.left)/WEEK_W));
+        }
+        row.bars=row.bars.filter(b=>b.id!==bar.id);
+        targetRow.bars.push(bar);
+      }
+    }
+    if(moved){render();scheduleSave();}
+  }
+  window.addEventListener('mousemove',onMove);
+  window.addEventListener('mouseup',onUp);
+}
+
+function onResizeDown(e){
+  e.preventDefault();e.stopPropagation();
+  const barId=e.currentTarget.dataset.resize;
+  const found=findBar(barId);
+  if(!found) return;
+  const {bar,row}=found;
+  const startX=e.clientX;
+  const origDur=bar.dur;
+  function onMove(e){
+    const dd=Math.round((e.clientX-startX)/WEEK_W);
+    const newDur=Math.max(1,origDur+dd);
+    if(newDur!==bar.dur){
+      const delta=newDur-bar.dur;
+      bar.dur=newDur;
+      pushFollowing(row,barId,delta);
+      render();
+    }
+  }
+  function onUp(){window.removeEventListener('mousemove',onMove);window.removeEventListener('mouseup',onUp);scheduleSave();}
+  window.addEventListener('mousemove',onMove);
+  window.addEventListener('mouseup',onUp);
+}
+
+document.getElementById('modal').addEventListener('click',e=>{
+  if(e.target===document.getElementById('modal')) closeModal();
+});
+
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeModal();
+  if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveData();}
+});
+
+loadData();
+</script>
+</body>
+</html>

@@ -12,22 +12,14 @@ h1{font-size:16px;font-weight:500;margin-bottom:16px;color:#3d3d3a}
 .toolbar{display:flex;gap:8px;margin-bottom:16px;align-items:center;flex-wrap:wrap}
 button{font-size:12px;padding:5px 12px;border:0.5px solid #b0afa8;border-radius:6px;background:#fff;cursor:pointer;color:#3d3d3a}
 button:hover{background:#f0efea}
-button:disabled{opacity:.4;cursor:not-allowed}
 button.primary{background:#185FA5;color:#fff;border-color:#185FA5}
 button.primary:hover{background:#0C447C}
 button.danger{background:#fff;color:#A32D2D;border-color:#A32D2D}
 button.danger:hover{background:#FCEBEB}
-.status{font-size:11px;color:#888;margin-left:4px;min-width:160px}
-.status.saving{color:#BA7517}
-.status.ok{color:#3B6D11}
-.status.err{color:#A32D2D}
+.status{font-size:11px;color:#888;margin-left:4px;min-width:180px}
 .sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
-.sync-dot.ok{background:#3B6D11}
-.sync-dot.saving{background:#BA7517}
-.sync-dot.err{background:#A32D2D}
 .gantt-wrap{overflow-x:auto;border:0.5px solid #d3d1c7;border-radius:10px;background:#fff}
 .gantt{min-width:max-content}
-.col-left{width:160px;flex:none}
 .header-row{display:flex;border-bottom:1px solid #e8e7e2;position:sticky;top:0;background:#f8f7f3;z-index:20}
 .header-left{width:160px;flex:none;padding:8px 10px;font-size:10px;font-weight:500;color:#888;border-right:1px solid #e8e7e2}
 .header-weeks{display:flex;flex:1;position:relative}
@@ -47,8 +39,8 @@ button.danger:hover{background:#FCEBEB}
 .week-bg-cell{flex:none;width:56px;height:100%;border-right:0.5px solid #f0efea}
 .week-bg-cell.month-start{border-left:2px solid #e8e7e2}
 .week-bg-cell.today-cell{background:rgba(226,75,74,0.04)}
-.bar{position:absolute;height:26px;border-radius:5px;cursor:grab;display:flex;align-items:center;padding:0 8px 0 6px;font-size:10px;font-weight:500;white-space:nowrap;overflow:hidden;user-select:none;z-index:3;transition:box-shadow .1s}
-.bar:active{cursor:grabbing;box-shadow:0 2px 8px rgba(0,0,0,0.15);z-index:100}
+.bar{position:absolute;height:26px;border-radius:5px;cursor:grab;display:flex;align-items:center;padding:0 8px 0 6px;font-size:10px;font-weight:500;white-space:nowrap;overflow:hidden;user-select:none;z-index:3}
+.bar:active{cursor:grabbing;z-index:100}
 .bar.done{background:#DAEAF7;border:1px solid #185FA5;color:#0C447C}
 .bar.wip{background:#FEF3C7;border:1px solid #BA7517;color:#633806}
 .bar.idea{background:#EAF3DE;border:1px solid #3B6D11;color:#27500A}
@@ -66,7 +58,6 @@ button.danger:hover{background:#FCEBEB}
 .modal label{font-size:11px;color:#666;display:block;margin-bottom:4px}
 .modal input,.modal select{width:100%;padding:6px 10px;border:0.5px solid #ccc;border-radius:6px;font-size:12px;margin-bottom:12px;background:#fff;color:#1a1a18}
 .modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
-.modal-btns-left{display:flex;gap:8px;justify-content:flex-start;margin-top:4px}
 .modal-row{display:flex;justify-content:space-between;align-items:center}
 </style>
 </head>
@@ -78,8 +69,8 @@ button.danger:hover{background:#FCEBEB}
   <button onclick="addWeeks(-4)">- 4 týdny</button>
   <button onclick="addRow()">+ Řádek</button>
   <button onclick="openAddBar()">+ Položka</button>
-  <button class="primary" id="btn-save" onclick="saveData()">Uložit</button>
-  <span class="status" id="status"><span class="sync-dot ok" id="sync-dot"></span>Načítám...</span>
+  <button class="primary" onclick="saveData()">Uložit</button>
+  <span class="status" id="status"><span class="sync-dot" id="sync-dot" style="background:#aaa"></span>Načítám...</span>
 </div>
 <div class="gantt-wrap">
   <div class="gantt" id="gantt"></div>
@@ -106,7 +97,7 @@ button.danger:hover{background:#FCEBEB}
       <option value="idea">Uvažujeme (zelená)</option>
     </select>
     <div class="modal-row">
-      <div class="modal-btns-left" id="modal-del-wrap"></div>
+      <div id="modal-del-wrap"></div>
       <div class="modal-btns">
         <button onclick="closeModal()">Zrušit</button>
         <button class="primary" onclick="confirmModal()">Uložit</button>
@@ -116,9 +107,10 @@ button.danger:hover{background:#FCEBEB}
 </div>
 
 <script>
-const API_KEY = '$2a$10$G91DHYmm/b1VUe2NtdXMFuPnV03HLpfX152bs6ADCN2kinQMxqLUC';
+const API_KEY = '$2a$10$Id1oXfXml.FyfHg0w301QOI3u2QaaQKVGCyKYkj0xfHBzVeMIW7ue';
 const BIN_NAME = 'keyguru-roadmap';
-const LS_BIN_ID = 'kgr-bin-id';
+const LS_BIN_ID = 'kgr-bin-id-v3';
+const LS_DATA = 'kgr-data-v3';
 const WEEK_W = 56;
 const START = new Date('2026-04-20');
 
@@ -160,131 +152,91 @@ let editingBar = null;
 let nextId = 200;
 let saveTimer = null;
 
-function setStatus(msg, cls){
-  const el = document.getElementById('status');
-  const dot = document.getElementById('sync-dot');
-  el.innerHTML = `<span class="sync-dot ${cls}" id="sync-dot"></span>${msg}`;
-  el.className = 'status ' + cls;
+function setStatus(msg, color){
+  document.getElementById('status').innerHTML =
+    `<span class="sync-dot" style="background:${color}"></span>${msg}`;
 }
 
 async function loadData(){
-  setStatus('Načítám...','saving');
-  try{
+  setStatus('Načítám...','#BA7517');
+  try {
     if(binId){
       const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`,{
-        headers:{'X-Master-Key':API_KEY}
+        headers:{'X-Master-Key':API_KEY,'X-Bin-Meta':'false'}
       });
-      if(r.ok){
-        const j = await r.json();
-        data = j.record;
-        setStatus('Synchronizováno','ok');
-        render();
-        return;
-      }
+      if(r.ok){ data = await r.json(); setStatus('Synchronizováno','#3B6D11'); render(); return; }
     }
     await createBin();
-  }catch(e){
-    fallbackLoad();
-  }
+  } catch(e){ fallback(); }
 }
 
 async function createBin(){
-  setStatus('Inicializuji...','saving');
-  try{
+  setStatus('Inicializuji...','#BA7517');
+  try {
     const r = await fetch('https://api.jsonbin.io/v3/b',{
       method:'POST',
       headers:{'Content-Type':'application/json','X-Master-Key':API_KEY,'X-Bin-Name':BIN_NAME,'X-Bin-Private':'false'},
-      body:JSON.stringify(DEFAULT)
+      body: JSON.stringify(DEFAULT)
     });
     if(r.ok){
       const j = await r.json();
       binId = j.metadata.id;
       localStorage.setItem(LS_BIN_ID, binId);
-      data = DEFAULT;
-      setStatus('Synchronizováno','ok');
+      data = JSON.parse(JSON.stringify(DEFAULT));
+      setStatus('Synchronizováno','#3B6D11');
       render();
-    } else {
-      fallbackLoad();
-    }
-  }catch(e){
-    fallbackLoad();
-  }
+    } else { fallback(); }
+  } catch(e){ fallback(); }
 }
 
-function fallbackLoad(){
-  const ls = localStorage.getItem('kgr-roadmap-local');
+function fallback(){
+  const ls = localStorage.getItem(LS_DATA);
   data = ls ? JSON.parse(ls) : JSON.parse(JSON.stringify(DEFAULT));
-  setStatus('Offline — ukládám lokálně','err');
+  setStatus('Offline — ukládám lokálně','#A32D2D');
   render();
 }
 
 async function saveData(){
   if(!data) return;
-  localStorage.setItem('kgr-roadmap-local', JSON.stringify(data));
-  setStatus('Ukládám...','saving');
-  try{
+  localStorage.setItem(LS_DATA, JSON.stringify(data));
+  setStatus('Ukládám...','#BA7517');
+  try {
     if(!binId){ await createBin(); return; }
     const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}`,{
       method:'PUT',
       headers:{'Content-Type':'application/json','X-Master-Key':API_KEY},
-      body:JSON.stringify(data)
+      body: JSON.stringify(data)
     });
     if(r.ok){
-      const now = new Date().toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});
-      setStatus(`Uloženo ${now}`,'ok');
-    } else {
-      setStatus('Chyba uložení — data jsou lokálně','err');
-    }
-  }catch(e){
-    setStatus('Offline — uloženo lokálně','err');
-  }
+      const t = new Date().toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});
+      setStatus(`Uloženo ${t}`,'#3B6D11');
+    } else { setStatus('Chyba — uloženo lokálně','#A32D2D'); }
+  } catch(e){ setStatus('Offline — uloženo lokálně','#A32D2D'); }
 }
 
-function scheduleSave(){
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(saveData, 1500);
-}
-
-function weekLabel(i){
-  const d = new Date(START);
-  d.setDate(d.getDate()+i*7);
-  return d.getDate()+'.'+(d.getMonth()+1)+'.';
-}
-
-function isMonthStart(i){
-  if(i===0) return false;
-  const d = new Date(START); d.setDate(d.getDate()+i*7);
-  const p = new Date(START); p.setDate(p.getDate()+(i-1)*7);
-  return d.getMonth()!==p.getMonth();
-}
-
-function todayWeek(){
-  return (new Date()-START)/(7*24*3600*1000);
-}
-
-function addWeeks(n){
-  data.totalWeeks=Math.max(8,data.totalWeeks+n);
-  render(); scheduleSave();
-}
+function scheduleSave(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveData,1500); }
+function weekLabel(i){ const d=new Date(START);d.setDate(d.getDate()+i*7);return d.getDate()+'.'+(d.getMonth()+1)+'.'; }
+function isMonthStart(i){ if(!i)return false;const d=new Date(START);d.setDate(d.getDate()+i*7);const p=new Date(START);p.setDate(p.getDate()+(i-1)*7);return d.getMonth()!==p.getMonth(); }
+function todayWeek(){ return(new Date()-START)/(7*24*3600*1000); }
+function addWeeks(n){ data.totalWeeks=Math.max(8,data.totalWeeks+n);render();scheduleSave(); }
 
 function addRow(){
   const secId=prompt('Přidat řádek do sekce (jan / martin / tomas):','jan');
-  if(!secId) return;
+  if(!secId)return;
   const sec=data.sections.find(s=>s.id===secId);
   if(!sec){alert('Sekce nenalezena');return;}
   const label=prompt('Název řádku:','Nový řádek');
-  if(!label) return;
+  if(!label)return;
   sec.rows.push({id:'r'+Date.now(),label,bars:[]});
-  render(); scheduleSave();
+  render();scheduleSave();
 }
 
 function deleteRow(rowId){
   for(const sec of data.sections){
     const idx=sec.rows.findIndex(r=>r.id===rowId);
     if(idx!==-1){
-      if(!confirm(`Smazat řádek "${sec.rows[idx].label}"?`)) return;
-      sec.rows.splice(idx,1);
-      render(); scheduleSave(); return;
+      if(!confirm(`Smazat řádek "${sec.rows[idx].label}"?`))return;
+      sec.rows.splice(idx,1);render();scheduleSave();return;
     }
   }
 }
@@ -302,24 +254,16 @@ function openAddBar(){
   setTimeout(()=>document.getElementById('m-label').focus(),50);
 }
 
-function fillRowSelect(selectedRowId){
-  const sel=document.getElementById('m-row');
-  sel.innerHTML='';
-  for(const sec of data.sections){
-    for(const row of sec.rows){
-      const opt=document.createElement('option');
-      opt.value=row.id;
-      opt.textContent=sec.name.split(' ')[0]+' — '+row.label;
-      if(row.id===selectedRowId) opt.selected=true;
-      sel.appendChild(opt);
-    }
+function fillRowSelect(sel){
+  const el=document.getElementById('m-row');el.innerHTML='';
+  for(const sec of data.sections)for(const row of sec.rows){
+    const o=document.createElement('option');
+    o.value=row.id;o.textContent=sec.name.split(' ')[0]+' — '+row.label;
+    if(row.id===sel)o.selected=true;el.appendChild(o);
   }
 }
 
-function closeModal(){
-  document.getElementById('modal').classList.remove('open');
-  editingBar=null;
-}
+function closeModal(){ document.getElementById('modal').classList.remove('open');editingBar=null; }
 
 function confirmModal(){
   const label=document.getElementById('m-label').value.trim();
@@ -329,139 +273,83 @@ function confirmModal(){
   const dur=parseInt(document.getElementById('m-dur').value)||4;
   const type=document.getElementById('m-type').value;
   if(editingBar){
-    editingBar.bar.label=label;
-    editingBar.bar.start=start;
-    editingBar.bar.dur=dur;
-    editingBar.bar.type=type;
+    Object.assign(editingBar.bar,{label,start,dur,type});
     if(editingBar.rowId!==rowId){
-      const oldRow=findRow(editingBar.rowId);
-      const newRow=findRow(rowId);
-      if(oldRow&&newRow){
-        oldRow.bars=oldRow.bars.filter(b=>b.id!==editingBar.bar.id);
-        newRow.bars.push(editingBar.bar);
-      }
+      const o=findRow(editingBar.rowId),n=findRow(rowId);
+      if(o&&n){o.bars=o.bars.filter(b=>b.id!==editingBar.bar.id);n.bars.push(editingBar.bar);}
     }
   } else {
     const row=findRow(rowId);
-    if(row) row.bars.push({id:'b'+(nextId++),start,dur,type,label});
+    if(row)row.bars.push({id:'b'+(nextId++),start,dur,type,label});
   }
-  closeModal(); render(); scheduleSave();
+  closeModal();render();scheduleSave();
 }
 
 function deleteBar(barId){
-  for(const sec of data.sections){
-    for(const row of sec.rows){
-      const idx=row.bars.findIndex(b=>b.id===barId);
-      if(idx!==-1){row.bars.splice(idx,1); closeModal(); render(); scheduleSave(); return;}
-    }
+  for(const sec of data.sections)for(const row of sec.rows){
+    const idx=row.bars.findIndex(b=>b.id===barId);
+    if(idx!==-1){row.bars.splice(idx,1);closeModal();render();scheduleSave();return;}
   }
 }
 
-function findRow(rowId){
-  for(const sec of data.sections){
-    const r=sec.rows.find(r=>r.id===rowId);
-    if(r) return r;
-  }
-  return null;
-}
-
-function findBar(barId){
-  for(const sec of data.sections){
-    for(const row of sec.rows){
-      const b=row.bars.find(b=>b.id===barId);
-      if(b) return {bar:b,row,sec};
-    }
-  }
-  return null;
-}
+function findRow(id){ for(const s of data.sections){const r=s.rows.find(r=>r.id===id);if(r)return r;}return null; }
+function findBar(id){ for(const s of data.sections)for(const r of s.rows){const b=r.bars.find(b=>b.id===id);if(b)return{bar:b,row:r,sec:s};}return null; }
 
 function pushFollowing(row,barId,delta){
-  if(delta===0) return;
-  const bar=row.bars.find(b=>b.id===barId);
-  if(!bar) return;
+  if(!delta)return;
+  const bar=row.bars.find(b=>b.id===barId);if(!bar)return;
   const end=bar.start+bar.dur;
-  for(const b of row.bars){
-    if(b.id===barId) continue;
-    if(b.start>=end-(delta>0?delta:0)) b.start=Math.max(0,b.start+delta);
-  }
+  for(const b of row.bars)if(b.id!==barId&&b.start>=end-(delta>0?delta:0))b.start=Math.max(0,b.start+delta);
 }
 
 function render(){
-  if(!data) return;
-  const W=data.totalWeeks;
-  const todayW=todayWeek();
-  const g=document.getElementById('gantt');
-  let html='';
-
-  html+='<div class="header-row">';
-  html+='<div class="header-left">Kdo / co</div>';
+  if(!data)return;
+  const W=data.totalWeeks,tw=todayWeek();
+  let html='<div class="header-row"><div class="header-left">Kdo / co</div>';
   html+=`<div class="header-weeks" style="position:relative;width:${W*WEEK_W}px">`;
   for(let i=0;i<W;i++){
     const ms=i>0&&isMonthStart(i)?' month-start':'';
     html+=`<div class="week-hdr${ms}"><div class="week-num">T${i+1}</div>${weekLabel(i)}</div>`;
   }
-  const todayPx=todayW*WEEK_W;
-  html+=`<div class="today-line" style="left:${todayPx}px"></div>`;
-  html+=`<div class="today-label" style="left:${todayPx+4}px">dnes</div>`;
+  html+=`<div class="today-line" style="left:${tw*WEEK_W}px"></div>`;
+  html+=`<div class="today-label" style="left:${tw*WEEK_W+4}px">dnes</div>`;
   html+='</div></div>';
-
   for(const sec of data.sections){
     const c=COLORS[sec.color]||COLORS.jan;
-    html+=`<div class="section-hdr">
-      <span class="avatar" style="background:${c.bg};color:${c.text};border:1px solid ${c.border}">${c.initials}</span>
-      ${sec.name}
-    </div>`;
+    html+=`<div class="section-hdr"><span class="avatar" style="background:${c.bg};color:${c.text};border:1px solid ${c.border}">${c.initials}</span>${sec.name}</div>`;
     for(const row of sec.rows){
-      html+=`<div class="row" data-row="${row.id}">`;
-      html+=`<div class="row-left">
-        <div class="row-label" contenteditable="true" data-row-label="${row.id}" spellcheck="false">${row.label}</div>
-        <button class="row-del" onclick="deleteRow('${row.id}')" title="Smazat řádek">×</button>
-      </div>`;
-      html+=`<div class="timeline" data-row="${row.id}" style="width:${W*WEEK_W}px">`;
-      html+='<div class="week-bg">';
+      html+=`<div class="row" data-row="${row.id}"><div class="row-left"><div class="row-label" contenteditable="true" data-row-label="${row.id}" spellcheck="false">${row.label}</div><button class="row-del" onclick="deleteRow('${row.id}')" title="Smazat řádek">×</button></div>`;
+      html+=`<div class="timeline" data-row="${row.id}" style="width:${W*WEEK_W}px"><div class="week-bg">`;
       for(let i=0;i<W;i++){
         const ms=i>0&&isMonthStart(i)?' month-start':'';
-        const td=(i<=todayW&&todayW<i+1)?' today-cell':'';
+        const td=(i<=tw&&tw<i+1)?' today-cell':'';
         html+=`<div class="week-bg-cell${ms}${td}"></div>`;
       }
       html+='</div>';
-      for(const bar of row.bars){
-        const left=bar.start*WEEK_W;
-        const width=bar.dur*WEEK_W;
-        html+=`<div class="bar ${bar.type}" data-bar="${bar.id}" style="left:${left}px;width:${width}px" title="${bar.label} (T${bar.start+1}–T${bar.start+bar.dur})">
-          <span class="bar-label">${bar.label}</span>
-          <div class="resize-r" data-resize="${bar.id}"></div>
-        </div>`;
-      }
+      for(const bar of row.bars)
+        html+=`<div class="bar ${bar.type}" data-bar="${bar.id}" style="left:${bar.start*WEEK_W}px;width:${bar.dur*WEEK_W}px" title="${bar.label} (T${bar.start+1}–T${bar.start+bar.dur})"><span class="bar-label">${bar.label}</span><div class="resize-r" data-resize="${bar.id}"></div></div>`;
       html+='</div></div>';
     }
   }
-  g.innerHTML=html;
+  document.getElementById('gantt').innerHTML=html;
   attachEvents();
 }
 
 function attachEvents(){
   document.querySelectorAll('[data-row-label]').forEach(el=>{
-    el.addEventListener('blur',()=>{
-      const row=findRow(el.dataset.rowLabel);
-      if(row){row.label=el.textContent.trim(); scheduleSave();}
-    });
+    el.addEventListener('blur',()=>{const r=findRow(el.dataset.rowLabel);if(r){r.label=el.textContent.trim();scheduleSave();}});
     el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();el.blur();}});
   });
   document.querySelectorAll('.bar').forEach(el=>{
     el.addEventListener('mousedown',onBarMouseDown);
     el.addEventListener('dblclick',onBarDblClick);
   });
-  document.querySelectorAll('.resize-r').forEach(el=>{
-    el.addEventListener('mousedown',onResizeDown);
-  });
+  document.querySelectorAll('.resize-r').forEach(el=>el.addEventListener('mousedown',onResizeDown));
 }
 
 function onBarDblClick(e){
   e.stopPropagation();
-  const barId=e.currentTarget.dataset.bar;
-  const found=findBar(barId);
-  if(!found) return;
+  const found=findBar(e.currentTarget.dataset.bar);if(!found)return;
   editingBar={bar:found.bar,rowId:found.row.id};
   document.getElementById('modal-title').textContent='Upravit položku';
   document.getElementById('m-label').value=found.bar.label;
@@ -469,119 +357,73 @@ function onBarDblClick(e){
   document.getElementById('m-dur').value=found.bar.dur;
   document.getElementById('m-type').value=found.bar.type;
   fillRowSelect(found.row.id);
-  document.getElementById('modal-del-wrap').innerHTML=
-    `<button class="danger" onclick="deleteBar('${barId}')">Smazat položku</button>`;
+  document.getElementById('modal-del-wrap').innerHTML=`<button class="danger" onclick="deleteBar('${found.bar.id}')">Smazat</button>`;
   document.getElementById('modal').classList.add('open');
 }
 
 function onBarMouseDown(e){
-  if(e.target.classList.contains('resize-r')) return;
-  if(e.target.isContentEditable) return;
+  if(e.target.classList.contains('resize-r'))return;
   e.preventDefault();
-  const barId=e.currentTarget.dataset.bar;
-  const found=findBar(barId);
-  if(!found) return;
-  const {bar,row}=found;
-  const startX=e.clientX;
-  const origStart=bar.start;
-  let moved=false;
-  let crossRow=false;
-  const ghost=document.getElementById('ghost');
-  const barEl=e.currentTarget;
-  const barType=bar.type;
-
+  const found=findBar(e.currentTarget.dataset.bar);if(!found)return;
+  const{bar,row}=found;
+  const startX=e.clientX,startY=e.clientY,origStart=bar.start;
+  let moved=false,crossRow=false;
+  const ghost=document.getElementById('ghost'),barEl=e.currentTarget;
   function onMove(e){
-    const dx=e.clientX-startX;
-    const dy=e.clientY-startY;
-    if(!moved&&Math.abs(dx)+Math.abs(dy)>4) moved=true;
-    if(!moved) return;
-    const dw=Math.round(dx/WEEK_W);
-    const targetEl=document.elementFromPoint(e.clientX,e.clientY);
-    const targetRowEl=targetEl&&targetEl.closest('[data-row]');
-    const targetRowId=targetRowEl&&targetRowEl.dataset.row;
-    const targetRow=targetRowId?findRow(targetRowId):null;
-
+    if(!moved&&Math.abs(e.clientX-startX)+Math.abs(e.clientY-startY)>4)moved=true;
+    if(!moved)return;
+    const dw=Math.round((e.clientX-startX)/WEEK_W);
+    const targetRowEl=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-row]');
+    const targetRow=targetRowEl?findRow(targetRowEl.dataset.row):null;
     if(targetRow&&targetRow.id!==row.id){
       crossRow=true;
-      ghost.style.cssText=`display:flex;left:${e.clientX-60}px;top:${e.clientY-13}px;width:${bar.dur*WEEK_W}px;background:${barType==='done'?'#DAEAF7':barType==='idea'?'#EAF3DE':'#FEF3C7'};border:1px solid ${barType==='done'?'#185FA5':barType==='idea'?'#3B6D11':'#BA7517'};color:${barType==='done'?'#0C447C':barType==='idea'?'#27500A':'#633806'}`;
-      ghost.textContent=bar.label;
-      barEl.style.opacity='0.3';
+      const fc=bar.type==='done'?'#DAEAF7':bar.type==='idea'?'#EAF3DE':'#FEF3C7';
+      const bc=bar.type==='done'?'#185FA5':bar.type==='idea'?'#3B6D11':'#BA7517';
+      const tc=bar.type==='done'?'#0C447C':bar.type==='idea'?'#27500A':'#633806';
+      ghost.style.cssText=`display:flex;left:${e.clientX-60}px;top:${e.clientY-13}px;width:${bar.dur*WEEK_W}px;background:${fc};border:1px solid ${bc};color:${tc}`;
+      ghost.textContent=bar.label;barEl.style.opacity='0.3';
       document.querySelectorAll('.drop-line').forEach(l=>l.remove());
-      const tl=targetRowEl&&targetRowEl.querySelector('.timeline');
-      if(tl){const line=document.createElement('div');line.className='drop-line';line.style.top='0';tl.appendChild(line);}
+      const tl=targetRowEl?.querySelector('.timeline');
+      if(tl){const dl=document.createElement('div');dl.className='drop-line';dl.style.top='0';tl.appendChild(dl);}
     } else {
-      crossRow=false;
-      ghost.style.display='none';
-      barEl.style.opacity='1';
+      crossRow=false;ghost.style.display='none';barEl.style.opacity='1';
       document.querySelectorAll('.drop-line').forEach(l=>l.remove());
-      const newStart=Math.max(0,origStart+dw);
-      if(newStart!==bar.start){
-        const delta=newStart-bar.start;
-        bar.start=newStart;
-        pushFollowing(row,barId,delta);
-        render();
-      }
+      const ns=Math.max(0,origStart+dw);
+      if(ns!==bar.start){const d=ns-bar.start;bar.start=ns;pushFollowing(row,bar.id,d);render();}
     }
   }
-
-  const startY=e.clientY;
-
   function onUp(e){
-    window.removeEventListener('mousemove',onMove);
-    window.removeEventListener('mouseup',onUp);
-    ghost.style.display='none';
-    document.querySelectorAll('.drop-line').forEach(l=>l.remove());
-    barEl.style.opacity='1';
+    window.removeEventListener('mousemove',onMove);window.removeEventListener('mouseup',onUp);
+    ghost.style.display='none';document.querySelectorAll('.drop-line').forEach(l=>l.remove());barEl.style.opacity='1';
     if(crossRow){
-      const targetEl=document.elementFromPoint(e.clientX,e.clientY);
-      const targetRowEl=targetEl&&targetEl.closest('[data-row]');
-      const targetRowId=targetRowEl&&targetRowEl.dataset.row;
-      const targetRow=targetRowId?findRow(targetRowId):null;
+      const targetRowEl=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-row]');
+      const targetRow=targetRowEl?findRow(targetRowEl.dataset.row):null;
       if(targetRow&&targetRow.id!==row.id){
-        const tl=targetRowEl&&targetRowEl.querySelector('.timeline');
-        if(tl){
-          const rect=tl.getBoundingClientRect();
-          bar.start=Math.max(0,Math.round((e.clientX-rect.left)/WEEK_W));
-        }
-        row.bars=row.bars.filter(b=>b.id!==bar.id);
-        targetRow.bars.push(bar);
+        const tl=targetRowEl?.querySelector('.timeline');
+        if(tl)bar.start=Math.max(0,Math.round((e.clientX-tl.getBoundingClientRect().left)/WEEK_W));
+        row.bars=row.bars.filter(b=>b.id!==bar.id);targetRow.bars.push(bar);
       }
     }
     if(moved){render();scheduleSave();}
   }
-  window.addEventListener('mousemove',onMove);
-  window.addEventListener('mouseup',onUp);
+  window.addEventListener('mousemove',onMove);window.addEventListener('mouseup',onUp);
 }
 
 function onResizeDown(e){
   e.preventDefault();e.stopPropagation();
-  const barId=e.currentTarget.dataset.resize;
-  const found=findBar(barId);
-  if(!found) return;
-  const {bar,row}=found;
-  const startX=e.clientX;
-  const origDur=bar.dur;
+  const found=findBar(e.currentTarget.dataset.resize);if(!found)return;
+  const{bar,row}=found;const startX=e.clientX,origDur=bar.dur;
   function onMove(e){
-    const dd=Math.round((e.clientX-startX)/WEEK_W);
-    const newDur=Math.max(1,origDur+dd);
-    if(newDur!==bar.dur){
-      const delta=newDur-bar.dur;
-      bar.dur=newDur;
-      pushFollowing(row,barId,delta);
-      render();
-    }
+    const nd=Math.max(1,origDur+Math.round((e.clientX-startX)/WEEK_W));
+    if(nd!==bar.dur){const d=nd-bar.dur;bar.dur=nd;pushFollowing(row,bar.id,d);render();}
   }
   function onUp(){window.removeEventListener('mousemove',onMove);window.removeEventListener('mouseup',onUp);scheduleSave();}
-  window.addEventListener('mousemove',onMove);
-  window.addEventListener('mouseup',onUp);
+  window.addEventListener('mousemove',onMove);window.addEventListener('mouseup',onUp);
 }
 
-document.getElementById('modal').addEventListener('click',e=>{
-  if(e.target===document.getElementById('modal')) closeModal();
-});
-
+document.getElementById('modal').addEventListener('click',e=>{if(e.target===document.getElementById('modal'))closeModal();});
 document.addEventListener('keydown',e=>{
-  if(e.key==='Escape') closeModal();
+  if(e.key==='Escape')closeModal();
   if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveData();}
 });
 

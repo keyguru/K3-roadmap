@@ -57,10 +57,15 @@ button.danger:hover{background:#FCEBEB}
 .drop-line{position:absolute;left:0;right:0;height:3px;background:#378ADD;border-radius:2px;z-index:50;pointer-events:none}
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.3);z-index:1000;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
-.modal{background:#fff;border-radius:10px;padding:20px;min-width:320px;box-shadow:0 8px 32px rgba(0,0,0,0.15)}
+.modal{background:#fff;border-radius:10px;padding:20px;min-width:340px;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,0.15)}
 .modal h3{font-size:14px;font-weight:500;margin-bottom:14px}
 .modal label{font-size:11px;color:#666;display:block;margin-bottom:4px}
 .modal input,.modal select{width:100%;padding:6px 10px;border:0.5px solid #ccc;border-radius:6px;font-size:12px;margin-bottom:12px;background:#fff;color:#1a1a18}
+.dep-list{border:0.5px solid #ccc;border-radius:6px;padding:6px;margin-bottom:12px;max-height:140px;overflow-y:auto;display:flex;flex-direction:column;gap:4px}
+.dep-item{display:flex;align-items:center;gap:7px;padding:3px 4px;border-radius:4px;cursor:pointer;font-size:12px;color:#3d3d3a}
+.dep-item:hover{background:#f5f5f3}
+.dep-item input[type=checkbox]{width:13px;height:13px;cursor:pointer;accent-color:#534AB7;flex:none}
+.dep-item.checked{background:#EEEDFE;color:#3C3489}
 .modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
 .modal-row{display:flex;justify-content:space-between;align-items:center}
 </style>
@@ -104,10 +109,8 @@ button.danger:hover{background:#FCEBEB}
       <option value="done">Hotové (modrá)</option>
       <option value="idea">Uvažujeme (zelená)</option>
     </select>
-    <label>Závisí na (nadřazený prvek)</label>
-    <select id="m-dep">
-      <option value="">— žádná vazba —</option>
-    </select>
+    <label>Závisí na (lze vybrat více)</label>
+    <div class="dep-list" id="m-deps"></div>
     <div class="modal-row">
       <div id="modal-del-wrap"></div>
       <div class="modal-btns">
@@ -122,7 +125,7 @@ button.danger:hover{background:#FCEBEB}
 const BIN_ID  = '69e97051aaba88219729eb4e';
 const API_KEY = '$2a$10$Id1oXfXml.FyfHg0w301QOI3u2QaaQKVGCyKYkj0xfHBzVeMIW7ue';
 const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
-const LS_DATA = 'kgr-data-v5';
+const LS_DATA = 'kgr-data-v6';
 const WEEK_W  = 56;
 const START   = new Date('2026-04-20');
 
@@ -132,7 +135,7 @@ const COLORS = {
   tomas: {bg:'#FAEEDA',border:'#854F0B',text:'#633806',initials:'TH'},
 };
 
-const DEFAULT = {"totalWeeks":24,"sections":[{"id":"jan","name":"Jan Procházka","color":"jan","rows":[{"id":"jan-r1","label":"BX/GK3 železo","bars":[{"id":"b1","start":0,"dur":8,"type":"wip","label":"BX/GK3"}]},{"id":"jan-r2","label":"GK3 elektro","bars":[{"id":"b2","start":0,"dur":8,"type":"wip","label":"GK3 elektronika"}]},{"id":"jan-r3","label":"Falken","bars":[{"id":"b3","start":3,"dur":8,"type":"wip","label":"Birdie"}]}]},{"id":"martin","name":"Martin Tauer","color":"martin","rows":[{"id":"mar-r1","label":"K2H úpravy","bars":[{"id":"b4","start":0,"dur":3,"type":"done","label":"K2H úpravy"}]},{"id":"mar-r2","label":"Autoservisy","bars":[{"id":"b5","start":3,"dur":8,"type":"wip","label":"Autoservisy"}]},{"id":"mar-r3","label":"K3","bars":[{"id":"b8","start":3,"dur":8,"type":"wip","label":"Core/Orchestration"}]},{"id":"mar-r4","label":"DeviceMgmt KGR","bars":[{"id":"b7","start":5,"dur":2,"type":"wip","label":"DeviceMgmt KGR","dep":"b2"}]},{"id":"mar-r5","label":"Core/Orchestration","bars":[{"id":"b6","start":7,"dur":4,"type":"wip","label":"BX/GK3 app","dep":"b2"}]},{"id":"mar-r6","label":"API","bars":[{"id":"b9","start":5,"dur":2,"type":"wip","label":"API","dep":"b8"},{"id":"b200","start":3,"dur":1,"type":"wip","label":"API copy K2H","dep":"b4"}]}]},{"id":"tomas","name":"Tomáš Haubert","color":"tomas","rows":[{"id":"tom-r1","label":"StaySync","bars":[{"id":"b10","start":0,"dur":6,"type":"wip","label":"StaySync"}]},{"id":"tom-r2","label":"DeviceMgmt Falken","bars":[{"id":"b11","start":3,"dur":4,"type":"wip","label":"DeviceMgmt Falken","dep":"b3"}]},{"id":"tom-r3","label":"User Mgmt","bars":[{"id":"b12","start":3,"dur":2,"type":"wip","label":"User Mgmt","dep":"b8"}]},{"id":"tom-r4","label":"Operator FE","bars":[{"id":"b13","start":5,"dur":4,"type":"wip","label":"Operator FE","dep":"b9"}]},{"id":"tom-r5","label":"DriveSync","bars":[{"id":"b14","start":7,"dur":4,"type":"wip","label":"DriveSync","dep":"b9"}]}]}]};
+const DEFAULT = {"totalWeeks":24,"sections":[{"id":"jan","name":"Jan Procházka","color":"jan","rows":[{"id":"jan-r1","label":"BX/GK3 železo","bars":[{"id":"b1","start":0,"dur":8,"type":"wip","label":"BX/GK3"}]},{"id":"jan-r2","label":"GK3 elektro","bars":[{"id":"b2","start":0,"dur":8,"type":"wip","label":"GK3 elektronika"}]},{"id":"jan-r3","label":"Falken","bars":[{"id":"b3","start":3,"dur":8,"type":"wip","label":"Birdie"}]}]},{"id":"martin","name":"Martin Tauer","color":"martin","rows":[{"id":"mar-r1","label":"K2H úpravy","bars":[{"id":"b4","start":0,"dur":3,"type":"done","label":"K2H úpravy"}]},{"id":"mar-r2","label":"Autoservisy","bars":[{"id":"b5","start":3,"dur":8,"type":"wip","label":"Autoservisy","deps":["b8","b7"]}]},{"id":"mar-r3","label":"K3","bars":[{"id":"b8","start":3,"dur":8,"type":"wip","label":"Core/Orchestration"}]},{"id":"mar-r4","label":"DeviceMgmt KGR","bars":[{"id":"b7","start":5,"dur":2,"type":"wip","label":"DeviceMgmt KGR","deps":["b2"]}]},{"id":"mar-r5","label":"Core/Orchestration","bars":[{"id":"b6","start":7,"dur":4,"type":"wip","label":"BX/GK3 app","deps":["b2"]}]},{"id":"mar-r6","label":"API","bars":[{"id":"b9","start":5,"dur":2,"type":"wip","label":"API","deps":["b8"]},{"id":"b200","start":3,"dur":1,"type":"wip","label":"API copy K2H","deps":["b4"]}]}]},{"id":"tomas","name":"Tomáš Haubert","color":"tomas","rows":[{"id":"tom-r1","label":"StaySync","bars":[{"id":"b10","start":0,"dur":6,"type":"wip","label":"StaySync"}]},{"id":"tom-r2","label":"DeviceMgmt Falken","bars":[{"id":"b11","start":3,"dur":4,"type":"wip","label":"DeviceMgmt Falken","deps":["b3"]}]},{"id":"tom-r3","label":"User Mgmt","bars":[{"id":"b12","start":3,"dur":2,"type":"wip","label":"User Mgmt","deps":["b8"]}]},{"id":"tom-r4","label":"Operator FE","bars":[{"id":"b13","start":5,"dur":4,"type":"wip","label":"Operator FE","deps":["b9"]}]},{"id":"tom-r5","label":"DriveSync","bars":[{"id":"b14","start":7,"dur":4,"type":"wip","label":"DriveSync","deps":["b8","b9"]}]}]}]};
 
 let data = null;
 let editingBar = null;
@@ -145,23 +148,33 @@ function setStatus(msg,color){
   document.getElementById('status-text').textContent=msg;
 }
 
+// Migrace starého formátu dep -> deps
+function migrate(d){
+  if(!d||!d.sections)return d;
+  for(const s of d.sections)for(const r of s.rows)for(const b of r.bars){
+    if(b.dep&&!b.deps){b.deps=[b.dep];delete b.dep;}
+    if(!b.deps)b.deps=[];
+  }
+  return d;
+}
+
 async function loadData(){
   setStatus('Načítám...','#BA7517');
   const ls=localStorage.getItem(LS_DATA);
-  if(ls){data=JSON.parse(ls);render();}
+  if(ls){data=migrate(JSON.parse(ls));render();}
   try{
     const r=await fetch(BIN_URL+'/latest',{headers:{'X-Master-Key':API_KEY,'X-Bin-Meta':'false'}});
     if(r.ok){
-      const remote=await r.json();
+      const remote=migrate(await r.json());
       if(remote&&remote.sections){
         data=remote;localStorage.setItem(LS_DATA,JSON.stringify(data));render();
         setStatus('Synchronizováno','#3B6D11');return;
       }
     }
-    if(!data){data=JSON.parse(JSON.stringify(DEFAULT));render();await saveData();return;}
+    if(!data){data=migrate(JSON.parse(JSON.stringify(DEFAULT)));render();await saveData();return;}
     setStatus('Synchronizováno','#3B6D11');
   }catch(e){
-    if(!data){data=JSON.parse(JSON.stringify(DEFAULT));render();}
+    if(!data){data=migrate(JSON.parse(JSON.stringify(DEFAULT)));render();}
     setStatus('Offline — lokální data','#A32D2D');
   }
 }
@@ -215,7 +228,8 @@ function openAddBar(){
   document.getElementById('m-dur').value=4;
   document.getElementById('m-type').value='wip';
   document.getElementById('modal-del-wrap').innerHTML='';
-  fillRowSelect();fillDepSelect(null,null);
+  fillRowSelect();
+  fillDepList(null,[]);
   document.getElementById('modal').classList.add('open');
   setTimeout(()=>document.getElementById('m-label').focus(),50);
 }
@@ -229,15 +243,25 @@ function fillRowSelect(sel){
   }
 }
 
-function fillDepSelect(currentBarId,currentDep){
-  const el=document.getElementById('m-dep');el.innerHTML='<option value="">— žádná vazba —</option>';
-  for(const bar of allBars()){
-    if(bar.id===currentBarId)continue;
-    const o=document.createElement('option');
-    o.value=bar.id;o.textContent=bar.label;
-    if(bar.id===currentDep)o.selected=true;
-    el.appendChild(o);
+function fillDepList(currentBarId, currentDeps){
+  const el=document.getElementById('m-deps');
+  el.innerHTML='';
+  const bars=allBars().filter(b=>b.id!==currentBarId);
+  if(!bars.length){el.innerHTML='<span style="font-size:11px;color:#aaa;padding:4px">Žádné jiné položky</span>';return;}
+  for(const bar of bars){
+    const checked=currentDeps.includes(bar.id);
+    const item=document.createElement('label');
+    item.className='dep-item'+(checked?' checked':'');
+    item.innerHTML=`<input type="checkbox" value="${bar.id}"${checked?' checked':''}> ${bar.label}`;
+    item.querySelector('input').addEventListener('change',function(){
+      item.classList.toggle('checked',this.checked);
+    });
+    el.appendChild(item);
   }
+}
+
+function getSelectedDeps(){
+  return Array.from(document.querySelectorAll('#m-deps input[type=checkbox]:checked')).map(i=>i.value);
 }
 
 function closeModal(){document.getElementById('modal').classList.remove('open');editingBar=null;}
@@ -249,19 +273,16 @@ function confirmModal(){
   const start=parseInt(document.getElementById('m-start').value)||0;
   const dur=parseInt(document.getElementById('m-dur').value)||4;
   const type=document.getElementById('m-type').value;
-  const dep=document.getElementById('m-dep').value||undefined;
+  const deps=getSelectedDeps();
   if(editingBar){
-    Object.assign(editingBar.bar,{label,start,dur,type});
-    if(dep)editingBar.bar.dep=dep; else delete editingBar.bar.dep;
+    Object.assign(editingBar.bar,{label,start,dur,type,deps});
     if(editingBar.rowId!==rowId){
       const o=findRow(editingBar.rowId),n=findRow(rowId);
       if(o&&n){o.bars=o.bars.filter(b=>b.id!==editingBar.bar.id);n.bars.push(editingBar.bar);}
     }
   }else{
     const row=findRow(rowId);
-    const bar={id:'b'+(nextId++),start,dur,type,label};
-    if(dep)bar.dep=dep;
-    if(row)row.bars.push(bar);
+    if(row)row.bars.push({id:'b'+(nextId++),start,dur,type,label,deps});
   }
   closeModal();render();scheduleSave();
 }
@@ -271,7 +292,7 @@ function deleteBar(barId){
     const idx=row.bars.findIndex(b=>b.id===barId);
     if(idx!==-1){
       row.bars.splice(idx,1);
-      for(const b of allBars())if(b.dep===barId)delete b.dep;
+      for(const b of allBars())b.deps=(b.deps||[]).filter(id=>id!==barId);
       closeModal();render();scheduleSave();return;
     }
   }
@@ -312,7 +333,7 @@ function render(){
       }
       html+='</div>';
       for(const bar of row.bars){
-        const hd=bar.dep?' has-dep':'';
+        const hd=(bar.deps&&bar.deps.length)?' has-dep':'';
         html+=`<div class="bar ${bar.type}${hd}" data-bar="${bar.id}" style="left:${bar.start*WEEK_W}px;width:${bar.dur*WEEK_W}px" title="${bar.label} (T${bar.start+1}–T${bar.start+bar.dur})"><span class="bar-label">${bar.label}</span><div class="resize-r" data-resize="${bar.id}"></div></div>`;
       }
       html+='</div></div>';
@@ -342,29 +363,33 @@ function getBarRect(barId){
 function drawDeps(hoveredId){
   updateSvg();
   const svg=document.getElementById('dep-svg');
-  const deps=allBars().filter(b=>b.dep);
-  if(!deps.length)return;
+  const bars=allBars();
+  const allDeps=[];
+  for(const bar of bars)for(const depId of (bar.deps||[]))allDeps.push({from:depId,to:bar.id});
+  if(!allDeps.length)return;
+
   const related=new Set();
   if(hoveredId){
     related.add(hoveredId);
-    for(const b of deps){
-      if(b.id===hoveredId)related.add(b.dep);
-      if(b.dep===hoveredId)related.add(b.id);
+    for(const {from,to} of allDeps){
+      if(to===hoveredId)related.add(from);
+      if(from===hoveredId)related.add(to);
     }
   }
+
   const defs=svg.innerHTML.match(/<defs>[\s\S]*?<\/defs>/)[0];
   let paths='';
-  for(const bar of deps){
-    if(hoveredId&&!related.has(bar.id)&&!related.has(bar.dep))continue;
-    const from=getBarRect(bar.dep);
-    const to=getBarRect(bar.id);
-    if(!from||!to)continue;
-    const isActive=hoveredId&&(bar.id===hoveredId||bar.dep===hoveredId);
+  for(const {from,to} of allDeps){
+    if(hoveredId&&!related.has(from)&&!related.has(to))continue;
+    const f=getBarRect(from);
+    const t=getBarRect(to);
+    if(!f||!t)continue;
+    const isActive=hoveredId&&(related.has(from)&&related.has(to));
     const color=isActive?'#534AB7':'#AFA9EC';
-    const op=isActive?0.9:0.45;
+    const op=isActive?0.9:0.4;
     const sw=isActive?1.8:1;
     const dash=isActive?'':'5 3';
-    const x1=from.x2+1,y1=from.y,x2=to.x1-1,y2=to.y;
+    const x1=f.x2+1,y1=f.y,x2=t.x1-1,y2=t.y;
     const mx=x1+(x2-x1)*0.5;
     const d=Math.abs(y1-y2)<3
       ?`M${x1},${y1} L${x2},${y2}`
@@ -375,11 +400,11 @@ function drawDeps(hoveredId){
 }
 
 function highlightRelated(hoveredId){
-  const deps=allBars().filter(b=>b.dep);
+  const bars=allBars();
   const related=new Set([hoveredId]);
-  for(const b of deps){
-    if(b.id===hoveredId)related.add(b.dep);
-    if(b.dep===hoveredId)related.add(b.id);
+  for(const bar of bars)for(const depId of (bar.deps||[])){
+    if(bar.id===hoveredId)related.add(depId);
+    if(depId===hoveredId)related.add(bar.id);
   }
   document.querySelectorAll('.bar').forEach(el=>{
     const bid=el.dataset.bar;
@@ -418,7 +443,7 @@ function onBarDblClick(e){
   document.getElementById('m-dur').value=found.bar.dur;
   document.getElementById('m-type').value=found.bar.type;
   fillRowSelect(found.row.id);
-  fillDepSelect(found.bar.id,found.bar.dep||null);
+  fillDepList(found.bar.id, found.bar.deps||[]);
   document.getElementById('modal-del-wrap').innerHTML=`<button class="danger" onclick="deleteBar('${found.bar.id}')">Smazat</button>`;
   document.getElementById('modal').classList.add('open');
 }

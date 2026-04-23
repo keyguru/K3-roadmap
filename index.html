@@ -16,8 +16,8 @@ button.primary{background:#185FA5;color:#fff;border-color:#185FA5}
 button.primary:hover{background:#0C447C}
 button.danger{background:#fff;color:#A32D2D;border-color:#A32D2D}
 button.danger:hover{background:#FCEBEB}
-.status{font-size:11px;color:#888;margin-left:4px;min-width:180px}
-.sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:middle}
+.status{font-size:11px;margin-left:4px;min-width:200px;display:flex;align-items:center;gap:5px}
+.sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex:none}
 .gantt-wrap{overflow-x:auto;border:0.5px solid #d3d1c7;border-radius:10px;background:#fff}
 .gantt{min-width:max-content}
 .header-row{display:flex;border-bottom:1px solid #e8e7e2;position:sticky;top:0;background:#f8f7f3;z-index:20}
@@ -70,7 +70,10 @@ button.danger:hover{background:#FCEBEB}
   <button onclick="addRow()">+ Řádek</button>
   <button onclick="openAddBar()">+ Položka</button>
   <button class="primary" onclick="saveData()">Uložit</button>
-  <span class="status" id="status"><span class="sync-dot" id="sync-dot" style="background:#aaa"></span>Načítám...</span>
+  <span class="status" id="status">
+    <span class="sync-dot" id="sync-dot" style="background:#aaa"></span>
+    <span id="status-text">Načítám...</span>
+  </span>
 </div>
 <div class="gantt-wrap">
   <div class="gantt" id="gantt"></div>
@@ -107,10 +110,8 @@ button.danger:hover{background:#FCEBEB}
 </div>
 
 <script>
-const API_KEY = '$2a$10$Id1oXfXml.FyfHg0w301QOI3u2QaaQKVGCyKYkj0xfHBzVeMIW7ue';
-const BIN_NAME = 'keyguru-roadmap';
-const LS_BIN_ID = 'kgr-bin-id-v3';
-const LS_DATA = 'kgr-data-v3';
+const WEBHOOK = 'https://script.google.com/a/macros/keyguru.cz/s/AKfycbzXcURSDfspo2GA27bYzv-OynSBmQwAo6dougz8ZDcfjEHA_XbJY5YW4cywH_ldDo-s/exec';
+const LS_DATA = 'kgr-data-v4';
 const WEEK_W = 56;
 const START = new Date('2026-04-20');
 
@@ -147,53 +148,43 @@ const DEFAULT = {
 };
 
 let data = null;
-let binId = localStorage.getItem(LS_BIN_ID) || null;
 let editingBar = null;
 let nextId = 200;
 let saveTimer = null;
 
 function setStatus(msg, color){
-  document.getElementById('status').innerHTML =
-    `<span class="sync-dot" style="background:${color}"></span>${msg}`;
+  document.getElementById('sync-dot').style.background = color;
+  document.getElementById('status-text').textContent = msg;
 }
 
 async function loadData(){
   setStatus('Načítám...','#BA7517');
-  try {
-    if(binId){
-      const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}/latest`,{
-        headers:{'X-Master-Key':API_KEY,'X-Bin-Meta':'false'}
-      });
-      if(r.ok){ data = await r.json(); setStatus('Synchronizováno','#3B6D11'); render(); return; }
-    }
-    await createBin();
-  } catch(e){ fallback(); }
-}
-
-async function createBin(){
-  setStatus('Inicializuji...','#BA7517');
-  try {
-    const r = await fetch('https://api.jsonbin.io/v3/b',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','X-Master-Key':API_KEY,'X-Bin-Name':BIN_NAME,'X-Bin-Private':'false'},
-      body: JSON.stringify(DEFAULT)
-    });
-    if(r.ok){
-      const j = await r.json();
-      binId = j.metadata.id;
-      localStorage.setItem(LS_BIN_ID, binId);
-      data = JSON.parse(JSON.stringify(DEFAULT));
-      setStatus('Synchronizováno','#3B6D11');
-      render();
-    } else { fallback(); }
-  } catch(e){ fallback(); }
-}
-
-function fallback(){
   const ls = localStorage.getItem(LS_DATA);
-  data = ls ? JSON.parse(ls) : JSON.parse(JSON.stringify(DEFAULT));
-  setStatus('Offline — ukládám lokálně','#A32D2D');
-  render();
+  if(ls){ data = JSON.parse(ls); render(); }
+  try {
+    const r = await fetch(WEBHOOK, {redirect:'follow'});
+    const text = await r.text();
+    if(text && text.trim().startsWith('{')){
+      const remote = JSON.parse(text);
+      if(remote && remote.sections){
+        data = remote;
+        localStorage.setItem(LS_DATA, JSON.stringify(data));
+        render();
+        setStatus('Synchronizováno','#3B6D11');
+        return;
+      }
+    }
+    if(!data){
+      data = JSON.parse(JSON.stringify(DEFAULT));
+      render();
+      await saveData();
+      return;
+    }
+    setStatus('Synchronizováno','#3B6D11');
+  } catch(e){
+    if(!data){ data = JSON.parse(JSON.stringify(DEFAULT)); render(); }
+    setStatus('Offline — ukládám lokálně','#A32D2D');
+  }
 }
 
 async function saveData(){
@@ -201,20 +192,26 @@ async function saveData(){
   localStorage.setItem(LS_DATA, JSON.stringify(data));
   setStatus('Ukládám...','#BA7517');
   try {
-    if(!binId){ await createBin(); return; }
-    const r = await fetch(`https://api.jsonbin.io/v3/b/${binId}`,{
-      method:'PUT',
-      headers:{'Content-Type':'application/json','X-Master-Key':API_KEY},
+    const r = await fetch(WEBHOOK, {
+      method:'POST',
+      redirect:'follow',
+      headers:{'Content-Type':'text/plain'},
       body: JSON.stringify(data)
     });
-    if(r.ok){
+    const text = await r.text();
+    if(text.includes('"ok"')||text.includes('ok')){
       const t = new Date().toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});
       setStatus(`Uloženo ${t}`,'#3B6D11');
-    } else { setStatus('Chyba — uloženo lokálně','#A32D2D'); }
-  } catch(e){ setStatus('Offline — uloženo lokálně','#A32D2D'); }
+    } else {
+      setStatus('Chyba — uloženo lokálně','#A32D2D');
+    }
+  } catch(e){
+    setStatus('Offline — uloženo lokálně','#A32D2D');
+  }
 }
 
 function scheduleSave(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveData,1500); }
+
 function weekLabel(i){ const d=new Date(START);d.setDate(d.getDate()+i*7);return d.getDate()+'.'+(d.getMonth()+1)+'.'; }
 function isMonthStart(i){ if(!i)return false;const d=new Date(START);d.setDate(d.getDate()+i*7);const p=new Date(START);p.setDate(p.getDate()+(i-1)*7);return d.getMonth()!==p.getMonth(); }
 function todayWeek(){ return(new Date()-START)/(7*24*3600*1000); }

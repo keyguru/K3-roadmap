@@ -18,8 +18,9 @@ button.danger{background:#fff;color:#A32D2D;border-color:#A32D2D}
 button.danger:hover{background:#FCEBEB}
 .status{font-size:11px;margin-left:4px;min-width:200px;display:flex;align-items:center;gap:5px}
 .sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex:none}
-.gantt-wrap{overflow-x:auto;border:0.5px solid #d3d1c7;border-radius:10px;background:#fff}
-.gantt{min-width:max-content}
+.gantt-wrap{overflow-x:auto;border:0.5px solid #d3d1c7;border-radius:10px;background:#fff;position:relative}
+.gantt{min-width:max-content;position:relative}
+#dep-svg{position:absolute;top:0;left:0;pointer-events:none;z-index:15}
 .header-row{display:flex;border-bottom:1px solid #e8e7e2;position:sticky;top:0;background:#f8f7f3;z-index:20}
 .header-left{width:160px;flex:none;padding:8px 10px;font-size:10px;font-weight:500;color:#888;border-right:1px solid #e8e7e2}
 .header-weeks{display:flex;flex:1;position:relative}
@@ -39,11 +40,14 @@ button.danger:hover{background:#FCEBEB}
 .week-bg-cell{flex:none;width:56px;height:100%;border-right:0.5px solid #f0efea}
 .week-bg-cell.month-start{border-left:2px solid #e8e7e2}
 .week-bg-cell.today-cell{background:rgba(226,75,74,0.04)}
-.bar{position:absolute;height:26px;border-radius:5px;cursor:grab;display:flex;align-items:center;padding:0 8px 0 6px;font-size:10px;font-weight:500;white-space:nowrap;overflow:hidden;user-select:none;z-index:3}
+.bar{position:absolute;height:26px;border-radius:5px;cursor:grab;display:flex;align-items:center;padding:0 8px 0 6px;font-size:10px;font-weight:500;white-space:nowrap;overflow:hidden;user-select:none;z-index:3;transition:opacity .15s,box-shadow .15s}
 .bar:active{cursor:grabbing;z-index:100}
 .bar.done{background:#DAEAF7;border:1px solid #185FA5;color:#0C447C}
 .bar.wip{background:#FEF3C7;border:1px solid #BA7517;color:#633806}
 .bar.idea{background:#EAF3DE;border:1px solid #3B6D11;color:#27500A}
+.bar.has-dep::after{content:'';position:absolute;left:-5px;top:50%;transform:translateY(-50%);width:4px;height:4px;border-radius:50%;background:#7F77DD;opacity:.6}
+.bar.dimmed{opacity:.2}
+.bar.highlighted{box-shadow:0 0 0 2px #534AB7;z-index:10;opacity:1}
 .bar-label{pointer-events:none;overflow:hidden;text-overflow:ellipsis;flex:1}
 .resize-r{position:absolute;right:0;top:0;width:7px;height:100%;cursor:col-resize;z-index:4;border-radius:0 5px 5px 0}
 .resize-r:hover{background:rgba(0,0,0,0.12)}
@@ -75,8 +79,9 @@ button.danger:hover{background:#FCEBEB}
     <span id="status-text">Načítám...</span>
   </span>
 </div>
-<div class="gantt-wrap">
+<div class="gantt-wrap" id="gantt-wrap">
   <div class="gantt" id="gantt"></div>
+  <svg id="dep-svg" width="0" height="0"></svg>
 </div>
 </div>
 
@@ -99,6 +104,10 @@ button.danger:hover{background:#FCEBEB}
       <option value="done">Hotové (modrá)</option>
       <option value="idea">Uvažujeme (zelená)</option>
     </select>
+    <label>Závisí na (nadřazený prvek)</label>
+    <select id="m-dep">
+      <option value="">— žádná vazba —</option>
+    </select>
     <div class="modal-row">
       <div id="modal-del-wrap"></div>
       <div class="modal-btns">
@@ -110,10 +119,12 @@ button.danger:hover{background:#FCEBEB}
 </div>
 
 <script>
-const WEBHOOK = 'https://script.google.com/a/macros/keyguru.cz/s/AKfycbzXcURSDfspo2GA27bYzv-OynSBmQwAo6dougz8ZDcfjEHA_XbJY5YW4cywH_ldDo-s/exec';
-const LS_DATA = 'kgr-data-v4';
-const WEEK_W = 56;
-const START = new Date('2026-04-20');
+const BIN_ID  = '69e97051aaba88219729eb4e';
+const API_KEY = '$2a$10$Id1oXfXml.FyfHg0w301QOI3u2QaaQKVGCyKYkj0xfHBzVeMIW7ue';
+const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const LS_DATA = 'kgr-data-v5';
+const WEEK_W  = 56;
+const START   = new Date('2026-04-20');
 
 const COLORS = {
   jan:   {bg:'#DAEAF7',border:'#185FA5',text:'#0C447C',initials:'JP'},
@@ -121,101 +132,59 @@ const COLORS = {
   tomas: {bg:'#FAEEDA',border:'#854F0B',text:'#633806',initials:'TH'},
 };
 
-const DEFAULT = {
-  totalWeeks:24,
-  sections:[
-    {id:'jan',name:'Jan Procházka',color:'jan',rows:[
-      {id:'jan-r1',label:'BX/GK3',bars:[{id:'b1',start:0,dur:4,type:'wip',label:'BX/GK3'}]},
-      {id:'jan-r2',label:'RPi+board+app',bars:[{id:'b2',start:0,dur:4,type:'wip',label:'RPi+board+app'}]},
-      {id:'jan-r3',label:'Gateway',bars:[{id:'b3',start:4,dur:4,type:'wip',label:'Gateway'}]},
-    ]},
-    {id:'martin',name:'Martin Tauer',color:'martin',rows:[
-      {id:'mar-r1',label:'K2H úpravy',bars:[{id:'b4',start:0,dur:4,type:'done',label:'K2H úpravy'}]},
-      {id:'mar-r2',label:'Autoservisy',bars:[{id:'b5',start:4,dur:4,type:'wip',label:'Autoservisy'}]},
-      {id:'mar-r3',label:'BX/GK3 app',bars:[{id:'b6',start:4,dur:4,type:'wip',label:'BX/GK3 app'}]},
-      {id:'mar-r4',label:'DeviceMgmt KGR',bars:[{id:'b7',start:4,dur:4,type:'wip',label:'DeviceMgmt KGR'}]},
-      {id:'mar-r5',label:'Core/Orchestration',bars:[{id:'b8',start:4,dur:4,type:'wip',label:'Core/Orchestration'}]},
-      {id:'mar-r6',label:'API',bars:[{id:'b9',start:8,dur:4,type:'wip',label:'API'}]},
-    ]},
-    {id:'tomas',name:'Tomáš Haubert',color:'tomas',rows:[
-      {id:'tom-r1',label:'StaySync',bars:[{id:'b10',start:0,dur:4,type:'wip',label:'StaySync'}]},
-      {id:'tom-r2',label:'DeviceMgmt Falken',bars:[{id:'b11',start:4,dur:4,type:'wip',label:'DeviceMgmt Falken'}]},
-      {id:'tom-r3',label:'User Mgmt',bars:[{id:'b12',start:8,dur:4,type:'wip',label:'User Mgmt'}]},
-      {id:'tom-r4',label:'Operator FE',bars:[{id:'b13',start:8,dur:4,type:'wip',label:'Operator FE'}]},
-      {id:'tom-r5',label:'DriveSync',bars:[{id:'b14',start:8,dur:4,type:'wip',label:'DriveSync'}]},
-    ]},
-  ]
-};
+const DEFAULT = {"totalWeeks":24,"sections":[{"id":"jan","name":"Jan Procházka","color":"jan","rows":[{"id":"jan-r1","label":"BX/GK3 železo","bars":[{"id":"b1","start":0,"dur":8,"type":"wip","label":"BX/GK3"}]},{"id":"jan-r2","label":"GK3 elektro","bars":[{"id":"b2","start":0,"dur":8,"type":"wip","label":"GK3 elektronika"}]},{"id":"jan-r3","label":"Falken","bars":[{"id":"b3","start":3,"dur":8,"type":"wip","label":"Birdie"}]}]},{"id":"martin","name":"Martin Tauer","color":"martin","rows":[{"id":"mar-r1","label":"K2H úpravy","bars":[{"id":"b4","start":0,"dur":3,"type":"done","label":"K2H úpravy"}]},{"id":"mar-r2","label":"Autoservisy","bars":[{"id":"b5","start":3,"dur":8,"type":"wip","label":"Autoservisy"}]},{"id":"mar-r3","label":"K3","bars":[{"id":"b8","start":3,"dur":8,"type":"wip","label":"Core/Orchestration"}]},{"id":"mar-r4","label":"DeviceMgmt KGR","bars":[{"id":"b7","start":5,"dur":2,"type":"wip","label":"DeviceMgmt KGR","dep":"b2"}]},{"id":"mar-r5","label":"Core/Orchestration","bars":[{"id":"b6","start":7,"dur":4,"type":"wip","label":"BX/GK3 app","dep":"b2"}]},{"id":"mar-r6","label":"API","bars":[{"id":"b9","start":5,"dur":2,"type":"wip","label":"API","dep":"b8"},{"id":"b200","start":3,"dur":1,"type":"wip","label":"API copy K2H","dep":"b4"}]}]},{"id":"tomas","name":"Tomáš Haubert","color":"tomas","rows":[{"id":"tom-r1","label":"StaySync","bars":[{"id":"b10","start":0,"dur":6,"type":"wip","label":"StaySync"}]},{"id":"tom-r2","label":"DeviceMgmt Falken","bars":[{"id":"b11","start":3,"dur":4,"type":"wip","label":"DeviceMgmt Falken","dep":"b3"}]},{"id":"tom-r3","label":"User Mgmt","bars":[{"id":"b12","start":3,"dur":2,"type":"wip","label":"User Mgmt","dep":"b8"}]},{"id":"tom-r4","label":"Operator FE","bars":[{"id":"b13","start":5,"dur":4,"type":"wip","label":"Operator FE","dep":"b9"}]},{"id":"tom-r5","label":"DriveSync","bars":[{"id":"b14","start":7,"dur":4,"type":"wip","label":"DriveSync","dep":"b9"}]}]}]};
 
 let data = null;
 let editingBar = null;
-let nextId = 200;
+let nextId = 300;
 let saveTimer = null;
+let hoverActive = false;
 
-function setStatus(msg, color){
-  document.getElementById('sync-dot').style.background = color;
-  document.getElementById('status-text').textContent = msg;
+function setStatus(msg,color){
+  document.getElementById('sync-dot').style.background=color;
+  document.getElementById('status-text').textContent=msg;
 }
 
 async function loadData(){
   setStatus('Načítám...','#BA7517');
-  const ls = localStorage.getItem(LS_DATA);
-  if(ls){ data = JSON.parse(ls); render(); }
-  try {
-    const r = await fetch(WEBHOOK, {redirect:'follow'});
-    const text = await r.text();
-    if(text && text.trim().startsWith('{')){
-      const remote = JSON.parse(text);
-      if(remote && remote.sections){
-        data = remote;
-        localStorage.setItem(LS_DATA, JSON.stringify(data));
-        render();
-        setStatus('Synchronizováno','#3B6D11');
-        return;
+  const ls=localStorage.getItem(LS_DATA);
+  if(ls){data=JSON.parse(ls);render();}
+  try{
+    const r=await fetch(BIN_URL+'/latest',{headers:{'X-Master-Key':API_KEY,'X-Bin-Meta':'false'}});
+    if(r.ok){
+      const remote=await r.json();
+      if(remote&&remote.sections){
+        data=remote;localStorage.setItem(LS_DATA,JSON.stringify(data));render();
+        setStatus('Synchronizováno','#3B6D11');return;
       }
     }
-    if(!data){
-      data = JSON.parse(JSON.stringify(DEFAULT));
-      render();
-      await saveData();
-      return;
-    }
+    if(!data){data=JSON.parse(JSON.stringify(DEFAULT));render();await saveData();return;}
     setStatus('Synchronizováno','#3B6D11');
-  } catch(e){
-    if(!data){ data = JSON.parse(JSON.stringify(DEFAULT)); render(); }
-    setStatus('Offline — ukládám lokálně','#A32D2D');
+  }catch(e){
+    if(!data){data=JSON.parse(JSON.stringify(DEFAULT));render();}
+    setStatus('Offline — lokální data','#A32D2D');
   }
 }
 
 async function saveData(){
-  if(!data) return;
-  localStorage.setItem(LS_DATA, JSON.stringify(data));
+  if(!data)return;
+  localStorage.setItem(LS_DATA,JSON.stringify(data));
   setStatus('Ukládám...','#BA7517');
-  try {
-    const r = await fetch(WEBHOOK, {
-      method:'POST',
-      redirect:'follow',
-      headers:{'Content-Type':'text/plain'},
-      body: JSON.stringify(data)
-    });
-    const text = await r.text();
-    if(text.includes('"ok"')||text.includes('ok')){
-      const t = new Date().toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});
+  try{
+    const r=await fetch(BIN_URL,{method:'PUT',headers:{'Content-Type':'application/json','X-Master-Key':API_KEY},body:JSON.stringify(data)});
+    if(r.ok){
+      const t=new Date().toLocaleTimeString('cs-CZ',{hour:'2-digit',minute:'2-digit'});
       setStatus(`Uloženo ${t}`,'#3B6D11');
-    } else {
-      setStatus('Chyba — uloženo lokálně','#A32D2D');
-    }
-  } catch(e){
-    setStatus('Offline — uloženo lokálně','#A32D2D');
-  }
+    }else setStatus('Chyba — uloženo lokálně','#A32D2D');
+  }catch(e){setStatus('Offline — uloženo lokálně','#A32D2D');}
 }
 
-function scheduleSave(){ clearTimeout(saveTimer); saveTimer = setTimeout(saveData,1500); }
-
-function weekLabel(i){ const d=new Date(START);d.setDate(d.getDate()+i*7);return d.getDate()+'.'+(d.getMonth()+1)+'.'; }
-function isMonthStart(i){ if(!i)return false;const d=new Date(START);d.setDate(d.getDate()+i*7);const p=new Date(START);p.setDate(p.getDate()+(i-1)*7);return d.getMonth()!==p.getMonth(); }
-function todayWeek(){ return(new Date()-START)/(7*24*3600*1000); }
-function addWeeks(n){ data.totalWeeks=Math.max(8,data.totalWeeks+n);render();scheduleSave(); }
+function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveData,1500);}
+function weekLabel(i){const d=new Date(START);d.setDate(d.getDate()+i*7);return d.getDate()+'.'+(d.getMonth()+1)+'.';}
+function isMonthStart(i){if(!i)return false;const d=new Date(START);d.setDate(d.getDate()+i*7);const p=new Date(START);p.setDate(p.getDate()+(i-1)*7);return d.getMonth()!==p.getMonth();}
+function todayWeek(){return(new Date()-START)/(7*24*3600*1000);}
+function addWeeks(n){data.totalWeeks=Math.max(8,data.totalWeeks+n);render();scheduleSave();}
+function allBars(){const res=[];for(const s of data.sections)for(const r of s.rows)for(const b of r.bars)res.push(b);return res;}
 
 function addRow(){
   const secId=prompt('Přidat řádek do sekce (jan / martin / tomas):','jan');
@@ -246,7 +215,7 @@ function openAddBar(){
   document.getElementById('m-dur').value=4;
   document.getElementById('m-type').value='wip';
   document.getElementById('modal-del-wrap').innerHTML='';
-  fillRowSelect();
+  fillRowSelect();fillDepSelect(null,null);
   document.getElementById('modal').classList.add('open');
   setTimeout(()=>document.getElementById('m-label').focus(),50);
 }
@@ -260,7 +229,18 @@ function fillRowSelect(sel){
   }
 }
 
-function closeModal(){ document.getElementById('modal').classList.remove('open');editingBar=null; }
+function fillDepSelect(currentBarId,currentDep){
+  const el=document.getElementById('m-dep');el.innerHTML='<option value="">— žádná vazba —</option>';
+  for(const bar of allBars()){
+    if(bar.id===currentBarId)continue;
+    const o=document.createElement('option');
+    o.value=bar.id;o.textContent=bar.label;
+    if(bar.id===currentDep)o.selected=true;
+    el.appendChild(o);
+  }
+}
+
+function closeModal(){document.getElementById('modal').classList.remove('open');editingBar=null;}
 
 function confirmModal(){
   const label=document.getElementById('m-label').value.trim();
@@ -269,15 +249,19 @@ function confirmModal(){
   const start=parseInt(document.getElementById('m-start').value)||0;
   const dur=parseInt(document.getElementById('m-dur').value)||4;
   const type=document.getElementById('m-type').value;
+  const dep=document.getElementById('m-dep').value||undefined;
   if(editingBar){
     Object.assign(editingBar.bar,{label,start,dur,type});
+    if(dep)editingBar.bar.dep=dep; else delete editingBar.bar.dep;
     if(editingBar.rowId!==rowId){
       const o=findRow(editingBar.rowId),n=findRow(rowId);
       if(o&&n){o.bars=o.bars.filter(b=>b.id!==editingBar.bar.id);n.bars.push(editingBar.bar);}
     }
-  } else {
+  }else{
     const row=findRow(rowId);
-    if(row)row.bars.push({id:'b'+(nextId++),start,dur,type,label});
+    const bar={id:'b'+(nextId++),start,dur,type,label};
+    if(dep)bar.dep=dep;
+    if(row)row.bars.push(bar);
   }
   closeModal();render();scheduleSave();
 }
@@ -285,12 +269,16 @@ function confirmModal(){
 function deleteBar(barId){
   for(const sec of data.sections)for(const row of sec.rows){
     const idx=row.bars.findIndex(b=>b.id===barId);
-    if(idx!==-1){row.bars.splice(idx,1);closeModal();render();scheduleSave();return;}
+    if(idx!==-1){
+      row.bars.splice(idx,1);
+      for(const b of allBars())if(b.dep===barId)delete b.dep;
+      closeModal();render();scheduleSave();return;
+    }
   }
 }
 
-function findRow(id){ for(const s of data.sections){const r=s.rows.find(r=>r.id===id);if(r)return r;}return null; }
-function findBar(id){ for(const s of data.sections)for(const r of s.rows){const b=r.bars.find(b=>b.id===id);if(b)return{bar:b,row:r,sec:s};}return null; }
+function findRow(id){for(const s of data.sections){const r=s.rows.find(r=>r.id===id);if(r)return r;}return null;}
+function findBar(id){for(const s of data.sections)for(const r of s.rows){const b=r.bars.find(b=>b.id===id);if(b)return{bar:b,row:r,sec:s};}return null;}
 
 function pushFollowing(row,barId,delta){
   if(!delta)return;
@@ -323,13 +311,87 @@ function render(){
         html+=`<div class="week-bg-cell${ms}${td}"></div>`;
       }
       html+='</div>';
-      for(const bar of row.bars)
-        html+=`<div class="bar ${bar.type}" data-bar="${bar.id}" style="left:${bar.start*WEEK_W}px;width:${bar.dur*WEEK_W}px" title="${bar.label} (T${bar.start+1}–T${bar.start+bar.dur})"><span class="bar-label">${bar.label}</span><div class="resize-r" data-resize="${bar.id}"></div></div>`;
+      for(const bar of row.bars){
+        const hd=bar.dep?' has-dep':'';
+        html+=`<div class="bar ${bar.type}${hd}" data-bar="${bar.id}" style="left:${bar.start*WEEK_W}px;width:${bar.dur*WEEK_W}px" title="${bar.label} (T${bar.start+1}–T${bar.start+bar.dur})"><span class="bar-label">${bar.label}</span><div class="resize-r" data-resize="${bar.id}"></div></div>`;
+      }
       html+='</div></div>';
     }
   }
   document.getElementById('gantt').innerHTML=html;
+  updateSvg();
   attachEvents();
+}
+
+function updateSvg(){
+  const g=document.getElementById('gantt');
+  const svg=document.getElementById('dep-svg');
+  svg.setAttribute('width',g.scrollWidth);
+  svg.setAttribute('height',g.scrollHeight);
+  svg.innerHTML='<defs><marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L0,7 L7,3.5 z" fill="#7F77DD" opacity="0.8"/></marker></defs>';
+}
+
+function getBarRect(barId){
+  const el=document.querySelector(`[data-bar="${barId}"]`);
+  if(!el)return null;
+  const gr=document.getElementById('gantt').getBoundingClientRect();
+  const br=el.getBoundingClientRect();
+  return{x1:br.left-gr.left,x2:br.right-gr.left,y:br.top-gr.top+br.height/2};
+}
+
+function drawDeps(hoveredId){
+  updateSvg();
+  const svg=document.getElementById('dep-svg');
+  const deps=allBars().filter(b=>b.dep);
+  if(!deps.length)return;
+  const related=new Set();
+  if(hoveredId){
+    related.add(hoveredId);
+    for(const b of deps){
+      if(b.id===hoveredId)related.add(b.dep);
+      if(b.dep===hoveredId)related.add(b.id);
+    }
+  }
+  const defs=svg.innerHTML.match(/<defs>[\s\S]*?<\/defs>/)[0];
+  let paths='';
+  for(const bar of deps){
+    if(hoveredId&&!related.has(bar.id)&&!related.has(bar.dep))continue;
+    const from=getBarRect(bar.dep);
+    const to=getBarRect(bar.id);
+    if(!from||!to)continue;
+    const isActive=hoveredId&&(bar.id===hoveredId||bar.dep===hoveredId);
+    const color=isActive?'#534AB7':'#AFA9EC';
+    const op=isActive?0.9:0.45;
+    const sw=isActive?1.8:1;
+    const dash=isActive?'':'5 3';
+    const x1=from.x2+1,y1=from.y,x2=to.x1-1,y2=to.y;
+    const mx=x1+(x2-x1)*0.5;
+    const d=Math.abs(y1-y2)<3
+      ?`M${x1},${y1} L${x2},${y2}`
+      :`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+    paths+=`<path d="${d}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-opacity="${op}" stroke-dasharray="${dash}" marker-end="url(#arr)"/>`;
+  }
+  svg.innerHTML=defs+paths;
+}
+
+function highlightRelated(hoveredId){
+  const deps=allBars().filter(b=>b.dep);
+  const related=new Set([hoveredId]);
+  for(const b of deps){
+    if(b.id===hoveredId)related.add(b.dep);
+    if(b.dep===hoveredId)related.add(b.id);
+  }
+  document.querySelectorAll('.bar').forEach(el=>{
+    const bid=el.dataset.bar;
+    el.classList.toggle('dimmed',!related.has(bid));
+    el.classList.toggle('highlighted',related.has(bid));
+  });
+  drawDeps(hoveredId);
+}
+
+function clearHighlight(){
+  document.querySelectorAll('.bar').forEach(el=>{el.classList.remove('dimmed','highlighted');});
+  updateSvg();
 }
 
 function attachEvents(){
@@ -340,12 +402,14 @@ function attachEvents(){
   document.querySelectorAll('.bar').forEach(el=>{
     el.addEventListener('mousedown',onBarMouseDown);
     el.addEventListener('dblclick',onBarDblClick);
+    el.addEventListener('mouseenter',()=>{if(hoverActive)return;hoverActive=true;highlightRelated(el.dataset.bar);});
+    el.addEventListener('mouseleave',()=>{hoverActive=false;clearHighlight();});
   });
   document.querySelectorAll('.resize-r').forEach(el=>el.addEventListener('mousedown',onResizeDown));
 }
 
 function onBarDblClick(e){
-  e.stopPropagation();
+  e.stopPropagation();clearHighlight();hoverActive=false;
   const found=findBar(e.currentTarget.dataset.bar);if(!found)return;
   editingBar={bar:found.bar,rowId:found.row.id};
   document.getElementById('modal-title').textContent='Upravit položku';
@@ -354,6 +418,7 @@ function onBarDblClick(e){
   document.getElementById('m-dur').value=found.bar.dur;
   document.getElementById('m-type').value=found.bar.type;
   fillRowSelect(found.row.id);
+  fillDepSelect(found.bar.id,found.bar.dep||null);
   document.getElementById('modal-del-wrap').innerHTML=`<button class="danger" onclick="deleteBar('${found.bar.id}')">Smazat</button>`;
   document.getElementById('modal').classList.add('open');
 }
@@ -367,7 +432,7 @@ function onBarMouseDown(e){
   let moved=false,crossRow=false;
   const ghost=document.getElementById('ghost'),barEl=e.currentTarget;
   function onMove(e){
-    if(!moved&&Math.abs(e.clientX-startX)+Math.abs(e.clientY-startY)>4)moved=true;
+    if(!moved&&Math.abs(e.clientX-startX)+Math.abs(e.clientY-startY)>4){moved=true;clearHighlight();hoverActive=false;}
     if(!moved)return;
     const dw=Math.round((e.clientX-startX)/WEEK_W);
     const targetRowEl=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-row]');
@@ -382,7 +447,7 @@ function onBarMouseDown(e){
       document.querySelectorAll('.drop-line').forEach(l=>l.remove());
       const tl=targetRowEl?.querySelector('.timeline');
       if(tl){const dl=document.createElement('div');dl.className='drop-line';dl.style.top='0';tl.appendChild(dl);}
-    } else {
+    }else{
       crossRow=false;ghost.style.display='none';barEl.style.opacity='1';
       document.querySelectorAll('.drop-line').forEach(l=>l.remove());
       const ns=Math.max(0,origStart+dw);

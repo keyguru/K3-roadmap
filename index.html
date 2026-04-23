@@ -18,6 +18,9 @@ button.danger{background:#fff;color:#A32D2D;border-color:#A32D2D}
 button.danger:hover{background:#FCEBEB}
 .status{font-size:11px;margin-left:4px;min-width:200px;display:flex;align-items:center;gap:5px}
 .sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex:none}
+.legend{display:flex;gap:14px;margin-left:auto;align-items:center;font-size:11px;color:#73726c}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-swatch{width:22px;height:10px;border-radius:3px;flex:none}
 .gantt-wrap{overflow-x:auto;border:0.5px solid #d3d1c7;border-radius:10px;background:#fff;position:relative}
 .gantt{min-width:max-content;position:relative}
 #dep-svg{position:absolute;top:0;left:0;pointer-events:none;z-index:15}
@@ -40,15 +43,29 @@ button.danger:hover{background:#FCEBEB}
 .week-bg-cell{flex:none;width:56px;height:100%;border-right:0.5px solid #f0efea}
 .week-bg-cell.month-start{border-left:2px solid #e8e7e2}
 .week-bg-cell.today-cell{background:rgba(226,75,74,0.04)}
-.bar{position:absolute;height:26px;border-radius:5px;cursor:grab;display:flex;align-items:center;padding:0 8px 0 6px;font-size:10px;font-weight:500;white-space:nowrap;overflow:hidden;user-select:none;z-index:3;transition:opacity .15s,box-shadow .15s}
+
+/* Bar base */
+.bar{position:absolute;height:26px;border-radius:5px;cursor:grab;display:flex;align-items:center;padding:0 8px 0 7px;font-size:10px;font-weight:500;white-space:nowrap;overflow:hidden;user-select:none;z-index:3;transition:opacity .15s,box-shadow .15s}
 .bar:active{cursor:grabbing;z-index:100}
+
+/* Status colors - wip/done/idea */
 .bar.done{background:#DAEAF7;border:1px solid #185FA5;color:#0C447C}
-.bar.wip{background:#FEF3C7;border:1px solid #BA7517;color:#633806}
+.bar.wip {background:#FEF3C7;border:1px solid #BA7517;color:#633806}
 .bar.idea{background:#EAF3DE;border:1px solid #3B6D11;color:#27500A}
+
+/* Category: product — bold text + thicker border */
+.bar.product{border-width:2px;font-weight:700}
+/* Category: service — default */
+
+/* dep dot */
 .bar.has-dep::after{content:'';position:absolute;left:-5px;top:50%;transform:translateY(-50%);width:4px;height:4px;border-radius:50%;background:#7F77DD;opacity:.6}
-.bar.dimmed{opacity:.2}
-.bar.highlighted{box-shadow:0 0 0 2px #534AB7;z-index:10;opacity:1}
-.bar-label{pointer-events:none;overflow:hidden;text-overflow:ellipsis;flex:1}
+
+/* hover states */
+.bar.dimmed{opacity:.15!important}
+.bar.highlighted{box-shadow:0 0 0 2px #534AB7!important;z-index:10;opacity:1!important}
+
+.bar-label{pointer-events:none;overflow:hidden;text-overflow:ellipsis;flex:1;position:relative;z-index:1}
+.bar-cat{position:relative;z-index:1;font-size:8px;font-weight:400;opacity:.65;margin-left:4px;flex:none;text-transform:uppercase;letter-spacing:.03em}
 .resize-r{position:absolute;right:0;top:0;width:7px;height:100%;cursor:col-resize;z-index:4;border-radius:0 5px 5px 0}
 .resize-r:hover{background:rgba(0,0,0,0.12)}
 .today-line{position:absolute;top:0;bottom:0;width:2px;background:#E24B4A;opacity:.5;z-index:6;pointer-events:none}
@@ -83,6 +100,14 @@ button.danger:hover{background:#FCEBEB}
     <span class="sync-dot" id="sync-dot" style="background:#aaa"></span>
     <span id="status-text">Načítám...</span>
   </span>
+  <div class="legend">
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#FEF3C7;border:1px solid #BA7517"></div>service
+    </div>
+    <div class="legend-item">
+      <div class="legend-swatch" style="background:#FEF3C7;border:1px solid #BA7517;border-width:2px"></div><b>product</b>
+    </div>
+  </div>
 </div>
 <div class="gantt-wrap" id="gantt-wrap">
   <div class="gantt" id="gantt"></div>
@@ -109,6 +134,11 @@ button.danger:hover{background:#FCEBEB}
       <option value="done">Hotové (modrá)</option>
       <option value="idea">Uvažujeme (zelená)</option>
     </select>
+    <label>Kategorie</label>
+    <select id="m-cat">
+      <option value="service">Service</option>
+      <option value="product">Product</option>
+    </select>
     <label>Závisí na (lze vybrat více)</label>
     <div class="dep-list" id="m-deps"></div>
     <div class="modal-row">
@@ -125,9 +155,11 @@ button.danger:hover{background:#FCEBEB}
 const BIN_ID  = '69e97051aaba88219729eb4e';
 const API_KEY = '$2a$10$Id1oXfXml.FyfHg0w301QOI3u2QaaQKVGCyKYkj0xfHBzVeMIW7ue';
 const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
-const LS_DATA = 'kgr-data-v6';
+const LS_DATA = 'kgr-data-v7';
 const WEEK_W  = 56;
 const START   = new Date('2026-04-20');
+
+const PRODUCTS = new Set(['autoservisy','staysync','drivesync','birdie']);
 
 const COLORS = {
   jan:   {bg:'#DAEAF7',border:'#185FA5',text:'#0C447C',initials:'JP'},
@@ -135,25 +167,27 @@ const COLORS = {
   tomas: {bg:'#FAEEDA',border:'#854F0B',text:'#633806',initials:'TH'},
 };
 
-const DEFAULT = {"totalWeeks":24,"sections":[{"id":"jan","name":"Jan Procházka","color":"jan","rows":[{"id":"jan-r1","label":"BX/GK3 železo","bars":[{"id":"b1","start":0,"dur":8,"type":"wip","label":"BX/GK3"}]},{"id":"jan-r2","label":"GK3 elektro","bars":[{"id":"b2","start":0,"dur":8,"type":"wip","label":"GK3 elektronika"}]},{"id":"jan-r3","label":"Falken","bars":[{"id":"b3","start":3,"dur":8,"type":"wip","label":"Birdie"}]}]},{"id":"martin","name":"Martin Tauer","color":"martin","rows":[{"id":"mar-r1","label":"K2H úpravy","bars":[{"id":"b4","start":0,"dur":3,"type":"done","label":"K2H úpravy"}]},{"id":"mar-r2","label":"Autoservisy","bars":[{"id":"b5","start":3,"dur":8,"type":"wip","label":"Autoservisy","deps":["b8","b7"]}]},{"id":"mar-r3","label":"K3","bars":[{"id":"b8","start":3,"dur":8,"type":"wip","label":"Core/Orchestration"}]},{"id":"mar-r4","label":"DeviceMgmt KGR","bars":[{"id":"b7","start":5,"dur":2,"type":"wip","label":"DeviceMgmt KGR","deps":["b2"]}]},{"id":"mar-r5","label":"Core/Orchestration","bars":[{"id":"b6","start":7,"dur":4,"type":"wip","label":"BX/GK3 app","deps":["b2"]}]},{"id":"mar-r6","label":"API","bars":[{"id":"b9","start":5,"dur":2,"type":"wip","label":"API","deps":["b8"]},{"id":"b200","start":3,"dur":1,"type":"wip","label":"API copy K2H","deps":["b4"]}]}]},{"id":"tomas","name":"Tomáš Haubert","color":"tomas","rows":[{"id":"tom-r1","label":"StaySync","bars":[{"id":"b10","start":0,"dur":6,"type":"wip","label":"StaySync"}]},{"id":"tom-r2","label":"DeviceMgmt Falken","bars":[{"id":"b11","start":3,"dur":4,"type":"wip","label":"DeviceMgmt Falken","deps":["b3"]}]},{"id":"tom-r3","label":"User Mgmt","bars":[{"id":"b12","start":3,"dur":2,"type":"wip","label":"User Mgmt","deps":["b8"]}]},{"id":"tom-r4","label":"Operator FE","bars":[{"id":"b13","start":5,"dur":4,"type":"wip","label":"Operator FE","deps":["b9"]}]},{"id":"tom-r5","label":"DriveSync","bars":[{"id":"b14","start":7,"dur":4,"type":"wip","label":"DriveSync","deps":["b8","b9"]}]}]}]};
+const DEFAULT = {"totalWeeks":24,"sections":[{"id":"jan","name":"Jan Procházka","color":"jan","rows":[{"id":"jan-r1","label":"BX/GK3 železo","bars":[{"id":"b1","start":0,"dur":8,"type":"wip","label":"BX/GK3","cat":"service","deps":[]}]},{"id":"jan-r2","label":"GK3 elektro","bars":[{"id":"b2","start":0,"dur":8,"type":"wip","label":"GK3 elektronika","cat":"service","deps":[]}]},{"id":"jan-r3","label":"Falken","bars":[{"id":"b3","start":3,"dur":8,"type":"wip","label":"Birdie","cat":"product","deps":[]}]}]},{"id":"martin","name":"Martin Tauer","color":"martin","rows":[{"id":"mar-r1","label":"K2H úpravy","bars":[{"id":"b4","start":0,"dur":3,"type":"done","label":"K2H úpravy","cat":"service","deps":[]}]},{"id":"mar-r2","label":"Autoservisy","bars":[{"id":"b5","start":3,"dur":8,"type":"wip","label":"Autoservisy","cat":"product","deps":["b8","b7"]}]},{"id":"mar-r3","label":"K3","bars":[{"id":"b8","start":3,"dur":8,"type":"wip","label":"Core/Orchestration","cat":"service","deps":[]}]},{"id":"mar-r4","label":"DeviceMgmt KGR","bars":[{"id":"b7","start":5,"dur":2,"type":"wip","label":"DeviceMgmt KGR","cat":"service","deps":["b2"]}]},{"id":"mar-r5","label":"Core/Orchestration","bars":[{"id":"b6","start":7,"dur":4,"type":"wip","label":"BX/GK3 app","cat":"service","deps":["b2"]}]},{"id":"mar-r6","label":"API","bars":[{"id":"b9","start":5,"dur":2,"type":"wip","label":"API","cat":"service","deps":["b8"]},{"id":"b200","start":3,"dur":1,"type":"wip","label":"API copy K2H","cat":"service","deps":["b4"]}]}]},{"id":"tomas","name":"Tomáš Haubert","color":"tomas","rows":[{"id":"tom-r1","label":"StaySync","bars":[{"id":"b10","start":0,"dur":6,"type":"wip","label":"StaySync","cat":"product","deps":[]}]},{"id":"tom-r2","label":"DeviceMgmt Falken","bars":[{"id":"b11","start":3,"dur":4,"type":"wip","label":"DeviceMgmt Falken","cat":"service","deps":["b3"]}]},{"id":"tom-r3","label":"User Mgmt","bars":[{"id":"b12","start":3,"dur":2,"type":"wip","label":"User Mgmt","cat":"service","deps":["b8"]}]},{"id":"tom-r4","label":"Operator FE","bars":[{"id":"b13","start":5,"dur":4,"type":"wip","label":"Operator FE","cat":"service","deps":["b9"]}]},{"id":"tom-r5","label":"DriveSync","bars":[{"id":"b14","start":7,"dur":4,"type":"wip","label":"DriveSync","cat":"product","deps":["b8","b9"]}]}]}]};
 
 let data = null;
 let editingBar = null;
 let nextId = 300;
 let saveTimer = null;
-let hoverActive = false;
+let hoveredBarId = null; // track current hover globally
 
 function setStatus(msg,color){
   document.getElementById('sync-dot').style.background=color;
   document.getElementById('status-text').textContent=msg;
 }
 
-// Migrace starého formátu dep -> deps
 function migrate(d){
   if(!d||!d.sections)return d;
   for(const s of d.sections)for(const r of s.rows)for(const b of r.bars){
     if(b.dep&&!b.deps){b.deps=[b.dep];delete b.dep;}
     if(!b.deps)b.deps=[];
+    if(!b.cat){
+      b.cat=PRODUCTS.has(b.label.toLowerCase())?'product':'service';
+    }
   }
   return d;
 }
@@ -227,6 +261,7 @@ function openAddBar(){
   document.getElementById('m-start').value=0;
   document.getElementById('m-dur').value=4;
   document.getElementById('m-type').value='wip';
+  document.getElementById('m-cat').value='service';
   document.getElementById('modal-del-wrap').innerHTML='';
   fillRowSelect();
   fillDepList(null,[]);
@@ -243,9 +278,8 @@ function fillRowSelect(sel){
   }
 }
 
-function fillDepList(currentBarId, currentDeps){
-  const el=document.getElementById('m-deps');
-  el.innerHTML='';
+function fillDepList(currentBarId,currentDeps){
+  const el=document.getElementById('m-deps');el.innerHTML='';
   const bars=allBars().filter(b=>b.id!==currentBarId);
   if(!bars.length){el.innerHTML='<span style="font-size:11px;color:#aaa;padding:4px">Žádné jiné položky</span>';return;}
   for(const bar of bars){
@@ -264,7 +298,13 @@ function getSelectedDeps(){
   return Array.from(document.querySelectorAll('#m-deps input[type=checkbox]:checked')).map(i=>i.value);
 }
 
-function closeModal(){document.getElementById('modal').classList.remove('open');editingBar=null;}
+function closeModal(){
+  document.getElementById('modal').classList.remove('open');
+  editingBar=null;
+  // BUG FIX: reset hover state when modal closes
+  hoveredBarId=null;
+  clearHighlight();
+}
 
 function confirmModal(){
   const label=document.getElementById('m-label').value.trim();
@@ -273,17 +313,19 @@ function confirmModal(){
   const start=parseInt(document.getElementById('m-start').value)||0;
   const dur=parseInt(document.getElementById('m-dur').value)||4;
   const type=document.getElementById('m-type').value;
+  const cat=document.getElementById('m-cat').value;
   const deps=getSelectedDeps();
   if(editingBar){
-    Object.assign(editingBar.bar,{label,start,dur,type,deps});
+    Object.assign(editingBar.bar,{label,start,dur,type,cat,deps});
     if(editingBar.rowId!==rowId){
       const o=findRow(editingBar.rowId),n=findRow(rowId);
       if(o&&n){o.bars=o.bars.filter(b=>b.id!==editingBar.bar.id);n.bars.push(editingBar.bar);}
     }
   }else{
     const row=findRow(rowId);
-    if(row)row.bars.push({id:'b'+(nextId++),start,dur,type,label,deps});
+    if(row)row.bars.push({id:'b'+(nextId++),start,dur,type,cat,label,deps});
   }
+  hoveredBarId=null;
   closeModal();render();scheduleSave();
 }
 
@@ -293,6 +335,7 @@ function deleteBar(barId){
     if(idx!==-1){
       row.bars.splice(idx,1);
       for(const b of allBars())b.deps=(b.deps||[]).filter(id=>id!==barId);
+      hoveredBarId=null;
       closeModal();render();scheduleSave();return;
     }
   }
@@ -320,6 +363,7 @@ function render(){
   html+=`<div class="today-line" style="left:${tw*WEEK_W}px"></div>`;
   html+=`<div class="today-label" style="left:${tw*WEEK_W+4}px">dnes</div>`;
   html+='</div></div>';
+
   for(const sec of data.sections){
     const c=COLORS[sec.color]||COLORS.jan;
     html+=`<div class="section-hdr"><span class="avatar" style="background:${c.bg};color:${c.text};border:1px solid ${c.border}">${c.initials}</span>${sec.name}</div>`;
@@ -334,7 +378,8 @@ function render(){
       html+='</div>';
       for(const bar of row.bars){
         const hd=(bar.deps&&bar.deps.length)?' has-dep':'';
-        html+=`<div class="bar ${bar.type}${hd}" data-bar="${bar.id}" style="left:${bar.start*WEEK_W}px;width:${bar.dur*WEEK_W}px" title="${bar.label} (T${bar.start+1}–T${bar.start+bar.dur})"><span class="bar-label">${bar.label}</span><div class="resize-r" data-resize="${bar.id}"></div></div>`;
+        const cat=bar.cat||'service';
+        html+=`<div class="bar ${bar.type} ${cat}${hd}" data-bar="${bar.id}" style="left:${bar.start*WEEK_W}px;width:${bar.dur*WEEK_W}px" title="${bar.label} (T${bar.start+1}–T${bar.start+bar.dur}) [${cat}]"><span class="bar-label">${bar.label}</span><div class="resize-r" data-resize="${bar.id}"></div></div>`;
       }
       html+='</div></div>';
     }
@@ -342,6 +387,10 @@ function render(){
   document.getElementById('gantt').innerHTML=html;
   updateSvg();
   attachEvents();
+  // BUG FIX: restore hover state after re-render
+  if(hoveredBarId){
+    highlightRelated(hoveredBarId);
+  }
 }
 
 function updateSvg(){
@@ -365,47 +414,45 @@ function drawDeps(hoveredId){
   const svg=document.getElementById('dep-svg');
   const bars=allBars();
   const allDeps=[];
-  for(const bar of bars)for(const depId of (bar.deps||[]))allDeps.push({from:depId,to:bar.id});
+  for(const bar of bars)for(const depId of(bar.deps||[]))allDeps.push({from:depId,to:bar.id});
   if(!allDeps.length)return;
-
   const related=new Set();
   if(hoveredId){
     related.add(hoveredId);
-    for(const {from,to} of allDeps){
+    for(const{from,to}of allDeps){
       if(to===hoveredId)related.add(from);
       if(from===hoveredId)related.add(to);
     }
   }
-
   const defs=svg.innerHTML.match(/<defs>[\s\S]*?<\/defs>/)[0];
   let paths='';
-  for(const {from,to} of allDeps){
+  for(const{from,to}of allDeps){
     if(hoveredId&&!related.has(from)&&!related.has(to))continue;
-    const f=getBarRect(from);
-    const t=getBarRect(to);
+    const f=getBarRect(from);const t=getBarRect(to);
     if(!f||!t)continue;
-    const isActive=hoveredId&&(related.has(from)&&related.has(to));
+    const isActive=hoveredId&&related.has(from)&&related.has(to);
     const color=isActive?'#534AB7':'#AFA9EC';
-    const op=isActive?0.9:0.4;
-    const sw=isActive?1.8:1;
+    const op=isActive?0.9:0.4;const sw=isActive?1.8:1;
     const dash=isActive?'':'5 3';
     const x1=f.x2+1,y1=f.y,x2=t.x1-1,y2=t.y;
     const mx=x1+(x2-x1)*0.5;
-    const d=Math.abs(y1-y2)<3
-      ?`M${x1},${y1} L${x2},${y2}`
-      :`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
+    const d=Math.abs(y1-y2)<3?`M${x1},${y1} L${x2},${y2}`:`M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`;
     paths+=`<path d="${d}" fill="none" stroke="${color}" stroke-width="${sw}" stroke-opacity="${op}" stroke-dasharray="${dash}" marker-end="url(#arr)"/>`;
   }
   svg.innerHTML=defs+paths;
 }
 
-function highlightRelated(hoveredId){
-  const bars=allBars();
+function getRelated(hoveredId){
   const related=new Set([hoveredId]);
-  for(const bar of bars)for(const depId of (bar.deps||[])){
+  for(const bar of allBars())for(const depId of(bar.deps||[])){
     if(bar.id===hoveredId)related.add(depId);
     if(depId===hoveredId)related.add(bar.id);
   }
+  return related;
+}
+
+function highlightRelated(hoveredId){
+  const related=getRelated(hoveredId);
   document.querySelectorAll('.bar').forEach(el=>{
     const bid=el.dataset.bar;
     el.classList.toggle('dimmed',!related.has(bid));
@@ -427,14 +474,21 @@ function attachEvents(){
   document.querySelectorAll('.bar').forEach(el=>{
     el.addEventListener('mousedown',onBarMouseDown);
     el.addEventListener('dblclick',onBarDblClick);
-    el.addEventListener('mouseenter',()=>{if(hoverActive)return;hoverActive=true;highlightRelated(el.dataset.bar);});
-    el.addEventListener('mouseleave',()=>{hoverActive=false;clearHighlight();});
+    el.addEventListener('mouseenter',()=>{
+      hoveredBarId=el.dataset.bar;
+      highlightRelated(hoveredBarId);
+    });
+    el.addEventListener('mouseleave',()=>{
+      hoveredBarId=null;
+      clearHighlight();
+    });
   });
   document.querySelectorAll('.resize-r').forEach(el=>el.addEventListener('mousedown',onResizeDown));
 }
 
 function onBarDblClick(e){
-  e.stopPropagation();clearHighlight();hoverActive=false;
+  e.stopPropagation();
+  // BUG FIX: don't clear highlight here - closeModal will do it after save
   const found=findBar(e.currentTarget.dataset.bar);if(!found)return;
   editingBar={bar:found.bar,rowId:found.row.id};
   document.getElementById('modal-title').textContent='Upravit položku';
@@ -442,8 +496,9 @@ function onBarDblClick(e){
   document.getElementById('m-start').value=found.bar.start;
   document.getElementById('m-dur').value=found.bar.dur;
   document.getElementById('m-type').value=found.bar.type;
+  document.getElementById('m-cat').value=found.bar.cat||'service';
   fillRowSelect(found.row.id);
-  fillDepList(found.bar.id, found.bar.deps||[]);
+  fillDepList(found.bar.id,found.bar.deps||[]);
   document.getElementById('modal-del-wrap').innerHTML=`<button class="danger" onclick="deleteBar('${found.bar.id}')">Smazat</button>`;
   document.getElementById('modal').classList.add('open');
 }
@@ -457,7 +512,9 @@ function onBarMouseDown(e){
   let moved=false,crossRow=false;
   const ghost=document.getElementById('ghost'),barEl=e.currentTarget;
   function onMove(e){
-    if(!moved&&Math.abs(e.clientX-startX)+Math.abs(e.clientY-startY)>4){moved=true;clearHighlight();hoverActive=false;}
+    if(!moved&&Math.abs(e.clientX-startX)+Math.abs(e.clientY-startY)>4){
+      moved=true;hoveredBarId=null;clearHighlight();
+    }
     if(!moved)return;
     const dw=Math.round((e.clientX-startX)/WEEK_W);
     const targetRowEl=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-row]');

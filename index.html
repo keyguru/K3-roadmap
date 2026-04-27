@@ -53,8 +53,11 @@ button.danger:hover{background:#FCEBEB}
 .bar.wip {background:#FEF3C7;border:1px solid #BA7517;color:#633806}
 .bar.idea{background:#EAF3DE;border:1px solid #3B6D11;color:#27500A}
 
-/* Category: product — bold text + thicker border */
+/* Category: product — bold text + thicker border + sytější pozadí */
 .bar.product{border-width:2px;font-weight:700}
+.bar.product.done{background:#B8D8F2}
+.bar.product.wip {background:#FDE89A}
+.bar.product.idea{background:#C6EDB4}
 /* Category: service — default */
 
 /* dep dot */
@@ -113,6 +116,11 @@ button.danger:hover{background:#FCEBEB}
   <div class="gantt" id="gantt"></div>
   <svg id="dep-svg" width="0" height="0"></svg>
 </div>
+</div>
+
+<div style="margin-top:32px;padding:0 0 20px">
+  <div style="font-size:12px;font-weight:500;color:#5f5e5a;margin-bottom:10px">Architekturální mapa</div>
+  <img src="KGRarche.png" alt="KeyGuru architekturální mapa" style="max-width:100%;border:0.5px solid #d3d1c7;border-radius:10px;display:block">
 </div>
 
 <div id="ghost"></div>

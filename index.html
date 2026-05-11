@@ -88,6 +88,36 @@ button.danger:hover{background:#FCEBEB}
 .dep-item.checked{background:#EEEDFE;color:#3C3489}
 .modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
 .modal-row{display:flex;justify-content:space-between;align-items:center}
+
+/* ── Planner ── */
+.planner-section{margin-top:32px}
+.planner-title{font-size:12px;font-weight:500;color:#5f5e5a;margin-bottom:10px}
+.planner-wrap{border:0.5px solid #d3d1c7;border-radius:10px;background:#fff;padding:14px}
+.planner-toolbar{display:flex;gap:8px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+.planner-toolbar input.pl-name{flex:1;min-width:180px;height:28px;font-size:12px;border:0.5px solid #b0afa8;border-radius:6px;padding:0 8px;background:#fff;color:#1a1a18}
+.planner-toolbar select.pl-sel{height:28px;font-size:12px;border:0.5px solid #b0afa8;border-radius:6px;padding:0 6px;background:#fff;color:#3d3d3a}
+.pl-col-headers{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;margin-bottom:6px}
+.pl-col-head{padding:7px 10px;border-radius:6px;font-size:11px;font-weight:500;text-align:center;border:0.5px solid}
+.pl-col-head.unassigned{background:#f0efea;border-color:#d3d1c7;color:#73726c}
+.pl-col-head.mvp{background:#DAEAF7;border-color:#185FA5;color:#0C447C}
+.pl-col-head.extended{background:#EEEDFE;border-color:#534AB7;color:#3C3489}
+.pl-col-head.future{background:#FAEEDA;border-color:#854F0B;color:#633806}
+.pl-col-head .pl-sub{font-size:9px;font-weight:400;margin-top:2px;opacity:0.85}
+.pl-lanes{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+.pl-lane{min-height:54px;border-radius:6px;padding:5px;border:0.5px dashed #d3d1c7;transition:background 0.15s,border-color 0.15s}
+.pl-lane.drag-over{background:#f8f7f3;border-color:#888;border-style:solid}
+.pl-row-label{font-size:11px;font-weight:500;padding:8px 2px 4px;margin-top:6px}
+.pl-card{background:#fff;border:0.5px solid #d3d1c7;border-radius:5px;padding:5px 7px;font-size:11px;color:#1a1a18;cursor:grab;user-select:none;margin-bottom:4px;display:flex;align-items:center;justify-content:space-between;gap:6px;transition:border-color 0.1s,box-shadow 0.1s}
+.pl-card:hover{border-color:#888;box-shadow:0 1px 3px rgba(0,0,0,0.06)}
+.pl-card:active{cursor:grabbing}
+.pl-card.dragging{opacity:0.4}
+.pl-card.new-feat{border-left:2px solid #854F0B}
+.pl-card-label{flex:1;line-height:1.3}
+.pl-card-del{width:14px;height:14px;cursor:pointer;color:#bbb;display:flex;align-items:center;justify-content:center;border-radius:3px;flex-shrink:0;font-size:13px;line-height:1}
+.pl-card-del:hover{color:#A32D2D;background:#FCEBEB}
+.pl-trash{margin-top:10px;border:0.5px dashed #b0afa8;border-radius:6px;padding:10px;text-align:center;font-size:11px;color:#888;transition:all 0.15s}
+.pl-trash.drag-over{background:#FCEBEB;border-color:#A32D2D;color:#A32D2D;border-style:solid}
+.pl-trash svg{width:14px;height:14px;vertical-align:middle;margin-right:4px}
 </style>
 </head>
 <body>
@@ -116,6 +146,41 @@ button.danger:hover{background:#FCEBEB}
   <div class="gantt" id="gantt"></div>
   <svg id="dep-svg" width="0" height="0"></svg>
 </div>
+</div>
+
+<div style="margin-top:32px;padding:0 0 20px">
+  <div style="font-size:12px;font-weight:500;color:#5f5e5a;margin-bottom:10px">Plánovač funkcionalit K3</div>
+  <div class="planner-wrap">
+    <div class="planner-toolbar">
+      <input type="text" class="pl-name" id="pl-new-name" placeholder="Název nové funkce…">
+      <select class="pl-sel" id="pl-new-domain">
+        <option value="Core">Core / Orchestration</option>
+        <option value="HW">HW &amp; Access</option>
+        <option value="Integrace">Integrace</option>
+        <option value="Frontend">Frontend &amp; UI</option>
+        <option value="Bezpecnost">Bezpečnost &amp; Reporting</option>
+        <option value="AI">AI &amp; Data</option>
+      </select>
+      <select class="pl-sel" id="pl-new-phase">
+        <option value="unassigned">Nezařazeno</option>
+        <option value="mvp">MVP</option>
+        <option value="extended">Rozšířená</option>
+        <option value="future">Budoucí</option>
+      </select>
+      <button onclick="plAddCard()">+ Přidat</button>
+    </div>
+    <div class="pl-col-headers">
+      <div class="pl-col-head unassigned">Nezařazeno</div>
+      <div class="pl-col-head mvp">MVP<div class="pl-sub">červenec</div></div>
+      <div class="pl-col-head extended">Rozšířená<div class="pl-sub">září</div></div>
+      <div class="pl-col-head future">Budoucí<div class="pl-sub">Q4</div></div>
+    </div>
+    <div id="pl-board"></div>
+    <div class="pl-trash" id="pl-trash">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M2 4h12M6 4V2h4v2M5 4l.5 9h5l.5-9"/></svg>
+      Přetáhni sem pro smazání
+    </div>
+  </div>
 </div>
 
 <div style="margin-top:32px;padding:0 0 20px">
@@ -183,20 +248,105 @@ let nextId = 300;
 let saveTimer = null;
 let hoveredBarId = null; // track current hover globally
 
+const PLANNER_ROWS = [
+  {id:'Core', label:'Core / Orchestration', color:'#534AB7'},
+  {id:'HW', label:'HW & Access', color:'#0F6E56'},
+  {id:'Integrace', label:'Integrace', color:'#854F0B'},
+  {id:'Frontend', label:'Frontend & UI', color:'#185FA5'},
+  {id:'Bezpecnost', label:'Bezpečnost & Reporting', color:'#993C1D'},
+  {id:'AI', label:'AI & Data', color:'#1D9E75'},
+];
+const PLANNER_PHASES = ['unassigned','mvp','extended','future'];
+
+const PLANNER_DEFAULT = {nextId: 200, cards: [
+  {id:1,label:'User management',domain:'Core',phase:'mvp'},
+  {id:2,label:'Role & oprávnění',domain:'Core',phase:'mvp'},
+  {id:3,label:'Scénáře / scripty',domain:'Core',phase:'mvp'},
+  {id:4,label:'Notifikace (mail, SMS)',domain:'Core',phase:'mvp'},
+  {id:5,label:'Obsluha webhooků',domain:'Core',phase:'mvp'},
+  {id:6,label:'API databáze K3',domain:'Core',phase:'mvp'},
+  {id:7,label:'Zóny & hierarchie',domain:'Core',phase:'extended'},
+  {id:8,label:'Multi-tenant arch.',domain:'Core',phase:'extended'},
+  {id:9,label:'Audit log',domain:'Core',phase:'extended'},
+  {id:10,label:'AI agenti (core)',domain:'Core',phase:'future'},
+  {id:11,label:'Self-service konfig.',domain:'Core',phase:'future'},
+  {id:12,label:'Helpdesk automatizace',domain:'Core',phase:'future'},
+  {id:13,label:'API na K3 HW',domain:'HW',phase:'mvp'},
+  {id:14,label:'Rezervace přihrádek',domain:'HW',phase:'mvp'},
+  {id:15,label:'PIN generování',domain:'HW',phase:'mvp'},
+  {id:16,label:'Device management',domain:'HW',phase:'mvp'},
+  {id:17,label:'RFID / NFC čtečky',domain:'HW',phase:'extended'},
+  {id:18,label:'Falken (Sciener SDK)',domain:'HW',phase:'extended'},
+  {id:19,label:'Více HW platforem',domain:'HW',phase:'extended'},
+  {id:20,label:'Chytré zámky',domain:'HW',phase:'extended'},
+  {id:21,label:'Pobočkový přesun klíčů',domain:'HW',phase:'extended'},
+  {id:22,label:'Přímé ovlád. zásuvek',domain:'HW',phase:'future'},
+  {id:23,label:'White-label HW',domain:'HW',phase:'future'},
+  {id:24,label:'Obecný přístup. systém',domain:'HW',phase:'future'},
+  {id:25,label:'Channex integrace',domain:'Integrace',phase:'mvp'},
+  {id:26,label:'ERP – TEAS (autoservisy)',domain:'Integrace',phase:'mvp'},
+  {id:27,label:'Platební brána',domain:'Integrace',phase:'mvp'},
+  {id:28,label:'SMS brána',domain:'Integrace',phase:'mvp'},
+  {id:29,label:'ERP – zaměstnanci/karty',domain:'Integrace',phase:'extended'},
+  {id:30,label:'Detekce poškození vozů',domain:'Integrace',phase:'extended'},
+  {id:31,label:'Kamerový systém',domain:'Integrace',phase:'extended'},
+  {id:32,label:'PCO napojení',domain:'Integrace',phase:'extended'},
+  {id:33,label:'Otřesové čidlo',domain:'Integrace',phase:'extended'},
+  {id:34,label:'Obecné ERP konektory',domain:'Integrace',phase:'future'},
+  {id:35,label:'PMS napojení',domain:'Integrace',phase:'future'},
+  {id:36,label:'Open API ekosystém',domain:'Integrace',phase:'future'},
+  {id:37,label:'Majitel UI (StaySync)',domain:'Frontend',phase:'mvp'},
+  {id:38,label:'Technik / manažer UI',domain:'Frontend',phase:'mvp'},
+  {id:39,label:'Frontend na boxech',domain:'Frontend',phase:'mvp'},
+  {id:40,label:'Kalendář nemovitostí',domain:'Frontend',phase:'mvp'},
+  {id:41,label:'DriveSync UI',domain:'Frontend',phase:'extended'},
+  {id:42,label:'Falken operátor UI',domain:'Frontend',phase:'extended'},
+  {id:43,label:'Mobilní app (základ)',domain:'Frontend',phase:'extended'},
+  {id:44,label:'White-label UI',domain:'Frontend',phase:'future'},
+  {id:45,label:'Customer portal',domain:'Frontend',phase:'future'},
+  {id:46,label:'AI chat interface',domain:'Frontend',phase:'future'},
+  {id:47,label:'Základní reporting',domain:'Bezpecnost',phase:'mvp'},
+  {id:48,label:'Přístupový log',domain:'Bezpecnost',phase:'mvp'},
+  {id:49,label:'Alerting',domain:'Bezpecnost',phase:'mvp'},
+  {id:50,label:'AI kontrola vozidel',domain:'Bezpecnost',phase:'extended'},
+  {id:51,label:'Evidence km / palivo',domain:'Bezpecnost',phase:'extended'},
+  {id:52,label:'Bezpečnostní zóny',domain:'Bezpecnost',phase:'extended'},
+  {id:53,label:'Rozšíř. reporting',domain:'Bezpecnost',phase:'extended'},
+  {id:54,label:'Prediktivní monitoring',domain:'Bezpecnost',phase:'future'},
+  {id:55,label:'AI anomaly detection',domain:'Bezpecnost',phase:'future'},
+  {id:56,label:'Custom reporty',domain:'Bezpecnost',phase:'future'},
+  {id:101,label:'Strukturovaný event log',domain:'AI',phase:'mvp',isNew:true},
+  {id:102,label:'Usage analytics dashboard',domain:'AI',phase:'extended',isNew:true},
+  {id:103,label:'Vzorce & bottleneck detekce',domain:'AI',phase:'extended',isNew:true},
+  {id:104,label:'MCP server (K3 tools)',domain:'AI',phase:'future',isNew:true},
+  {id:105,label:'První agent (PIN reset / onboarding)',domain:'AI',phase:'future',isNew:true},
+  {id:106,label:'Agent – customer care',domain:'AI',phase:'future',isNew:true},
+]};
+
+let plDragId = null;
+
 function setStatus(msg,color){
   document.getElementById('sync-dot').style.background=color;
   document.getElementById('status-text').textContent=msg;
 }
 
 function migrate(d){
-  if(!d||!d.sections)return d;
-  for(const s of d.sections)for(const r of s.rows)for(const b of r.bars){
-    if(b.dep&&!b.deps){b.deps=[b.dep];delete b.dep;}
-    if(!b.deps)b.deps=[];
-    if(!b.cat){
-      b.cat=PRODUCTS.has(b.label.toLowerCase())?'product':'service';
+  if(!d)return d;
+  // New format: {roadmap: {...}, planner: {...}}
+  // Old format: {totalWeeks, sections, ...}  -> wrap as roadmap
+  if(d.sections && !d.roadmap){
+    d = {roadmap: d, planner: null};
+  }
+  if(d.roadmap && d.roadmap.sections){
+    for(const s of d.roadmap.sections)for(const r of s.rows)for(const b of r.bars){
+      if(b.dep&&!b.deps){b.deps=[b.dep];delete b.dep;}
+      if(!b.deps)b.deps=[];
+      if(!b.cat){
+        b.cat=PRODUCTS.has(b.label.toLowerCase())?'product':'service';
+      }
     }
   }
+  if(!d.planner) d.planner = JSON.parse(JSON.stringify(PLANNER_DEFAULT));
   return d;
 }
 
@@ -238,13 +388,13 @@ function scheduleSave(){clearTimeout(saveTimer);saveTimer=setTimeout(saveData,15
 function weekLabel(i){const d=new Date(START);d.setDate(d.getDate()+i*7);return d.getDate()+'.'+(d.getMonth()+1)+'.';}
 function isMonthStart(i){if(!i)return false;const d=new Date(START);d.setDate(d.getDate()+i*7);const p=new Date(START);p.setDate(p.getDate()+(i-1)*7);return d.getMonth()!==p.getMonth();}
 function todayWeek(){return(new Date()-START)/(7*24*3600*1000);}
-function addWeeks(n){data.totalWeeks=Math.max(8,data.totalWeeks+n);render();scheduleSave();}
-function allBars(){const res=[];for(const s of data.sections)for(const r of s.rows)for(const b of r.bars)res.push(b);return res;}
+function addWeeks(n){data.roadmap.totalWeeks=Math.max(8,data.roadmap.totalWeeks+n);render();scheduleSave();}
+function allBars(){const res=[];for(const s of data.roadmap.sections)for(const r of s.rows)for(const b of r.bars)res.push(b);return res;}
 
 function addRow(){
   const secId=prompt('Přidat řádek do sekce (jan / martin / tomas):','jan');
   if(!secId)return;
-  const sec=data.sections.find(s=>s.id===secId);
+  const sec=data.roadmap.sections.find(s=>s.id===secId);
   if(!sec){alert('Sekce nenalezena');return;}
   const label=prompt('Název řádku:','Nový řádek');
   if(!label)return;
@@ -253,7 +403,7 @@ function addRow(){
 }
 
 function deleteRow(rowId){
-  for(const sec of data.sections){
+  for(const sec of data.roadmap.sections){
     const idx=sec.rows.findIndex(r=>r.id===rowId);
     if(idx!==-1){
       if(!confirm(`Smazat řádek "${sec.rows[idx].label}"?`))return;
@@ -279,8 +429,7 @@ function openAddBar(){
 
 function fillRowSelect(sel){
   const el=document.getElementById('m-row');el.innerHTML='';
-  for(const sec of data.sections)for(const row of sec.rows){
-    const o=document.createElement('option');
+  for(const sec of data.roadmap.sections)for(const row of sec.rows){
     o.value=row.id;o.textContent=sec.name.split(' ')[0]+' — '+row.label;
     if(row.id===sel)o.selected=true;el.appendChild(o);
   }
@@ -338,7 +487,7 @@ function confirmModal(){
 }
 
 function deleteBar(barId){
-  for(const sec of data.sections)for(const row of sec.rows){
+  for(const sec of data.roadmap.sections)for(const row of sec.rows){
     const idx=row.bars.findIndex(b=>b.id===barId);
     if(idx!==-1){
       row.bars.splice(idx,1);
@@ -349,8 +498,8 @@ function deleteBar(barId){
   }
 }
 
-function findRow(id){for(const s of data.sections){const r=s.rows.find(r=>r.id===id);if(r)return r;}return null;}
-function findBar(id){for(const s of data.sections)for(const r of s.rows){const b=r.bars.find(b=>b.id===id);if(b)return{bar:b,row:r,sec:s};}return null;}
+function findRow(id){for(const s of data.roadmap.sections){const r=s.rows.find(r=>r.id===id);if(r)return r;}return null;}
+function findBar(id){for(const s of data.roadmap.sections)for(const r of s.rows){const b=r.bars.find(b=>b.id===id);if(b)return{bar:b,row:r,sec:s};}return null;}
 
 function pushFollowing(row,barId,delta){
   if(!delta)return;
@@ -361,7 +510,7 @@ function pushFollowing(row,barId,delta){
 
 function render(){
   if(!data)return;
-  const W=data.totalWeeks,tw=todayWeek();
+  const W=data.roadmap.totalWeeks,tw=todayWeek();
   let html='<div class="header-row"><div class="header-left">Kdo / co</div>';
   html+=`<div class="header-weeks" style="position:relative;width:${W*WEEK_W}px">`;
   for(let i=0;i<W;i++){
@@ -372,7 +521,7 @@ function render(){
   html+=`<div class="today-label" style="left:${tw*WEEK_W+4}px">dnes</div>`;
   html+='</div></div>';
 
-  for(const sec of data.sections){
+  for(const sec of data.roadmap.sections){
     const c=COLORS[sec.color]||COLORS.jan;
     html+=`<div class="section-hdr"><span class="avatar" style="background:${c.bg};color:${c.text};border:1px solid ${c.border}">${c.initials}</span>${sec.name}</div>`;
     for(const row of sec.rows){
@@ -399,6 +548,8 @@ function render(){
   if(hoveredBarId){
     highlightRelated(hoveredBarId);
   }
+  // Planner stays in sync with main render
+  if(typeof plRender === 'function') plRender();
 }
 
 function updateSvg(){
@@ -577,6 +728,103 @@ document.getElementById('modal').addEventListener('click',e=>{if(e.target===docu
 document.addEventListener('keydown',e=>{
   if(e.key==='Escape')closeModal();
   if((e.ctrlKey||e.metaKey)&&e.key==='s'){e.preventDefault();saveData();}
+});
+
+// ── Planner ──
+function plRender(){
+  if(!data || !data.planner) return;
+  const board = document.getElementById('pl-board');
+  if(!board) return;
+  let html = '';
+  for(const row of PLANNER_ROWS){
+    html += `<div class="pl-row-label" style="color:${row.color}">${row.label}</div>`;
+    html += '<div class="pl-lanes">';
+    for(const phase of PLANNER_PHASES){
+      html += `<div class="pl-lane" data-domain="${row.id}" data-phase="${phase}">`;
+      const cards = data.planner.cards.filter(c => c.domain === row.id && c.phase === phase);
+      for(const c of cards){
+        const cls = 'pl-card' + (c.isNew ? ' new-feat' : '');
+        const safeLabel = String(c.label).replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        html += `<div class="${cls}" draggable="true" data-pl-card="${c.id}"><span class="pl-card-label">${safeLabel}</span><span class="pl-card-del" data-pl-del="${c.id}" title="Smazat">×</span></div>`;
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  board.innerHTML = html;
+  plAttachEvents();
+}
+
+function plAttachEvents(){
+  document.querySelectorAll('.pl-card').forEach(el => {
+    el.addEventListener('dragstart', e => {
+      plDragId = parseInt(el.dataset.plCard);
+      el.classList.add('dragging');
+      try{ e.dataTransfer.setData('text/plain', String(plDragId)); }catch(_){}
+    });
+    el.addEventListener('dragend', () => {
+      plDragId = null;
+      el.classList.remove('dragging');
+    });
+  });
+  document.querySelectorAll('.pl-card-del').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const id = parseInt(el.dataset.plDel);
+      data.planner.cards = data.planner.cards.filter(c => c.id !== id);
+      plRender();
+      scheduleSave();
+    });
+  });
+  document.querySelectorAll('.pl-lane').forEach(lane => {
+    lane.addEventListener('dragover', e => { e.preventDefault(); lane.classList.add('drag-over'); });
+    lane.addEventListener('dragleave', () => lane.classList.remove('drag-over'));
+    lane.addEventListener('drop', e => {
+      e.preventDefault();
+      lane.classList.remove('drag-over');
+      if(plDragId == null) return;
+      const c = data.planner.cards.find(x => x.id === plDragId);
+      if(c){
+        c.domain = lane.dataset.domain;
+        c.phase = lane.dataset.phase;
+        plRender();
+        scheduleSave();
+      }
+    });
+  });
+  const trash = document.getElementById('pl-trash');
+  if(trash && !trash.dataset.bound){
+    trash.dataset.bound = '1';
+    trash.addEventListener('dragover', e => { e.preventDefault(); trash.classList.add('drag-over'); });
+    trash.addEventListener('dragleave', () => trash.classList.remove('drag-over'));
+    trash.addEventListener('drop', e => {
+      e.preventDefault();
+      trash.classList.remove('drag-over');
+      if(plDragId == null) return;
+      data.planner.cards = data.planner.cards.filter(c => c.id !== plDragId);
+      plDragId = null;
+      plRender();
+      scheduleSave();
+    });
+  }
+}
+
+function plAddCard(){
+  const nameEl = document.getElementById('pl-new-name');
+  const name = nameEl.value.trim();
+  if(!name) return;
+  const domain = document.getElementById('pl-new-domain').value;
+  const phase = document.getElementById('pl-new-phase').value;
+  const id = data.planner.nextId || 200;
+  data.planner.nextId = id + 1;
+  data.planner.cards.push({id, label: name, domain, phase});
+  nameEl.value = '';
+  plRender();
+  scheduleSave();
+}
+
+document.getElementById('pl-new-name').addEventListener('keydown', e => {
+  if(e.key === 'Enter') plAddCard();
 });
 
 loadData();

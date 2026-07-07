@@ -358,7 +358,7 @@ async function loadData(){
     const r=await fetch(BIN_URL+'/latest',{headers:{'X-Master-Key':API_KEY,'X-Bin-Meta':'false'}});
     if(r.ok){
       const remote=migrate(await r.json());
-      if(remote&&remote.sections){
+      if(remote&&remote.roadmap&&remote.roadmap.sections){
         data=remote;localStorage.setItem(LS_DATA,JSON.stringify(data));render();
         setStatus('Synchronizováno','#3B6D11');return;
       }

@@ -430,6 +430,7 @@ function openAddBar(){
 function fillRowSelect(sel){
   const el=document.getElementById('m-row');el.innerHTML='';
   for(const sec of data.roadmap.sections)for(const row of sec.rows){
+    const o=document.createElement('option');
     o.value=row.id;o.textContent=sec.name.split(' ')[0]+' — '+row.label;
     if(row.id===sel)o.selected=true;el.appendChild(o);
   }

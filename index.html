@@ -244,7 +244,11 @@ const DEFAULT = {"totalWeeks":24,"sections":[{"id":"jan","name":"Jan Procházka"
 
 let data = null;
 let editingBar = null;
-let nextId = 300;
+function nextBarId(){
+  let max=0;
+  for(const b of allBars()){const m=/^b(\d+)$/.exec(b.id);if(m)max=Math.max(max,+m[1]);}
+  return 'b'+(max+1);
+}
 let saveTimer = null;
 let hoveredBarId = null; // track current hover globally
 
@@ -481,7 +485,7 @@ function confirmModal(){
     }
   }else{
     const row=findRow(rowId);
-    if(row)row.bars.push({id:'b'+(nextId++),start,dur,type,cat,label,deps});
+    if(row)row.bars.push({id:nextBarId(),start,dur,type,cat,label,deps});
   }
   hoveredBarId=null;
   closeModal();render();scheduleSave();
